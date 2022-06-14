@@ -1,0 +1,298 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://dbpedia.org/ontology/author
+<http://dbpedia.org/ontology/author> rdf:type owl:ObjectProperty ;
+                                     rdfs:domain <http://dbpedia.org/ontology/Person> ;
+                                     rdfs:range <http://dbpedia.org/ontology/CreativeWork> .
+
+
+###  http://dbpedia.org/ontology/bornIn
+<http://dbpedia.org/ontology/bornIn> rdf:type owl:ObjectProperty ;
+                                     rdfs:domain <http://dbpedia.org/ontology/Person> ;
+                                     rdfs:range <http://dbpedia.org/ontology/City> .
+
+
+###  http://dbpedia.org/ontology/cinematography
+<http://dbpedia.org/ontology/cinematography> rdf:type owl:ObjectProperty ;
+                                             rdfs:domain <http://dbpedia.org/ontology/Film> ;
+                                             rdfs:range <http://dbpedia.org/ontology/Person> .
+
+
+###  http://dbpedia.org/ontology/createdBy
+<http://dbpedia.org/ontology/createdBy> rdf:type owl:ObjectProperty ;
+                                        rdfs:domain <http://dbpedia.org/ontology/TelevisionShow> ;
+                                        rdfs:range <http://dbpedia.org/ontology/Director> .
+
+
+###  http://dbpedia.org/ontology/directedBy
+<http://dbpedia.org/ontology/directedBy> rdf:type owl:ObjectProperty ;
+                                         rdfs:domain <http://dbpedia.org/ontology/Film> ;
+                                         rdfs:range <http://dbpedia.org/ontology/Director> .
+
+
+###  http://dbpedia.org/ontology/editor
+<http://dbpedia.org/ontology/editor> rdf:type owl:ObjectProperty ;
+                                     rdfs:domain <http://dbpedia.org/ontology/Film> ;
+                                     rdfs:range <http://dbpedia.org/ontology/Person> .
+
+
+###  http://dbpedia.org/ontology/foundedBy
+<http://dbpedia.org/ontology/foundedBy> rdf:type owl:ObjectProperty ;
+                                        rdfs:domain <http://dbpedia.org/ontology/ProductionCompany> ;
+                                        rdfs:range <http://dbpedia.org/ontology/Person> .
+
+
+###  http://dbpedia.org/ontology/headquarter
+<http://dbpedia.org/ontology/headquarter> rdf:type owl:ObjectProperty ;
+                                          rdfs:domain <http://dbpedia.org/ontology/ProductionCompany> ;
+                                          rdfs:range <http://dbpedia.org/ontology/Location> .
+
+
+###  http://dbpedia.org/ontology/in
+<http://dbpedia.org/ontology/in> rdf:type owl:ObjectProperty ;
+                                 rdfs:domain <http://dbpedia.org/ontology/City> ;
+                                 rdfs:range <http://dbpedia.org/ontology/Country> .
+
+
+###  http://dbpedia.org/ontology/keyPerson
+<http://dbpedia.org/ontology/keyPerson> rdf:type owl:ObjectProperty ;
+                                        rdfs:domain <http://dbpedia.org/ontology/ProductionCompany> ;
+                                        rdfs:range <http://dbpedia.org/ontology/Person> .
+
+
+###  http://dbpedia.org/ontology/location
+<http://dbpedia.org/ontology/location> rdf:type owl:ObjectProperty ;
+                                       rdfs:domain <http://dbpedia.org/ontology/CreativeWork> ;
+                                       rdfs:range <http://dbpedia.org/ontology/City> .
+
+
+###  http://dbpedia.org/ontology/producedBy
+<http://dbpedia.org/ontology/producedBy> rdf:type owl:ObjectProperty ;
+                                         rdfs:domain <http://dbpedia.org/ontology/Film> ;
+                                         rdfs:range <http://dbpedia.org/ontology/ProductionCompany> .
+
+
+###  http://dbpedia.org/ontology/spouse
+<http://dbpedia.org/ontology/spouse> rdf:type owl:ObjectProperty ;
+                                     rdfs:domain <http://dbpedia.org/ontology/Person> ;
+                                     rdfs:range <http://dbpedia.org/ontology/Person> .
+
+
+###  http://dbpedia.org/ontology/starring
+<http://dbpedia.org/ontology/starring> rdf:type owl:ObjectProperty ;
+                                       rdfs:domain <http://dbpedia.org/ontology/Actor> ;
+                                       rdfs:range <http://dbpedia.org/ontology/CreativeWork> .
+
+
+###  http://dbpedia.org/ontology/takesPlaceIn
+<http://dbpedia.org/ontology/takesPlaceIn> rdf:type owl:ObjectProperty ;
+                                           rdfs:domain <http://dbpedia.org/ontology/CreativeWork> ;
+                                           rdfs:range <http://dbpedia.org/ontology/Location> .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://dbpedia.org/ontology/almaMater
+<http://dbpedia.org/ontology/almaMater> rdf:type owl:DatatypeProperty ;
+                                        rdfs:domain <http://dbpedia.org/ontology/Director> ;
+                                        rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/area
+<http://dbpedia.org/ontology/area> rdf:type owl:DatatypeProperty ;
+                                   rdfs:domain <http://dbpedia.org/ontology/City> ;
+                                   rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/awards
+<http://dbpedia.org/ontology/awards> rdf:type owl:DatatypeProperty ;
+                                     rdfs:domain <http://dbpedia.org/ontology/Actor> ;
+                                     rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/birthDate
+<http://dbpedia.org/ontology/birthDate> rdf:type owl:DatatypeProperty ;
+                                        rdfs:domain <http://dbpedia.org/ontology/Person> ;
+                                        rdfs:range xsd:dateTime .
+
+
+###  http://dbpedia.org/ontology/birthName
+<http://dbpedia.org/ontology/birthName> rdf:type owl:DatatypeProperty ;
+                                        rdfs:domain <http://dbpedia.org/ontology/Person> ;
+                                        rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/broadcaster
+<http://dbpedia.org/ontology/broadcaster> rdf:type owl:DatatypeProperty ;
+                                          rdfs:domain <http://dbpedia.org/ontology/TelevisionShow> ;
+                                          rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/budget
+<http://dbpedia.org/ontology/budget> rdf:type owl:DatatypeProperty ;
+                                     rdfs:domain <http://dbpedia.org/ontology/Film> ;
+                                     rdfs:range xsd:decimal .
+
+
+###  http://dbpedia.org/ontology/capital
+<http://dbpedia.org/ontology/capital> rdf:type owl:DatatypeProperty ;
+                                      rdfs:domain <http://dbpedia.org/ontology/Country> ;
+                                      rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/channel
+<http://dbpedia.org/ontology/channel> rdf:type owl:DatatypeProperty ;
+                                      rdfs:domain <http://dbpedia.org/ontology/TelevisionShow> ;
+                                      rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/children
+<http://dbpedia.org/ontology/children> rdf:type owl:DatatypeProperty ;
+                                       rdfs:domain <http://dbpedia.org/ontology/Person> ;
+                                       rdfs:range xsd:int .
+
+
+###  http://dbpedia.org/ontology/cityName
+<http://dbpedia.org/ontology/cityName> rdf:type owl:DatatypeProperty ;
+                                       rdfs:domain <http://dbpedia.org/ontology/City> ;
+                                       rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/countryName
+<http://dbpedia.org/ontology/countryName> rdf:type owl:DatatypeProperty ;
+                                          rdfs:domain <http://dbpedia.org/ontology/Country> ;
+                                          rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/education
+<http://dbpedia.org/ontology/education> rdf:type owl:DatatypeProperty ;
+                                        rdfs:domain <http://dbpedia.org/ontology/Actor> ;
+                                        rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/genre
+<http://dbpedia.org/ontology/genre> rdf:type owl:DatatypeProperty ;
+                                    rdfs:domain <http://dbpedia.org/ontology/CreativeWork> ;
+                                    rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/knownFor
+<http://dbpedia.org/ontology/knownFor> rdf:type owl:DatatypeProperty ;
+                                       rdfs:domain <http://dbpedia.org/ontology/Director> ;
+                                       rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/language
+<http://dbpedia.org/ontology/language> rdf:type owl:DatatypeProperty ;
+                                       rdfs:domain <http://dbpedia.org/ontology/CreativeWork> ;
+                                       rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/languageCountry
+<http://dbpedia.org/ontology/languageCountry> rdf:type owl:DatatypeProperty ;
+                                              rdfs:domain <http://dbpedia.org/ontology/Country> ;
+                                              rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/numberEpisodes
+<http://dbpedia.org/ontology/numberEpisodes> rdf:type owl:DatatypeProperty ;
+                                             rdfs:domain <http://dbpedia.org/ontology/TelevisionShow> ;
+                                             rdfs:range xsd:int .
+
+
+###  http://dbpedia.org/ontology/numberSeasons
+<http://dbpedia.org/ontology/numberSeasons> rdf:type owl:DatatypeProperty ;
+                                            rdfs:domain <http://dbpedia.org/ontology/TelevisionShow> ;
+                                            rdfs:range xsd:int .
+
+
+###  http://dbpedia.org/ontology/population
+<http://dbpedia.org/ontology/population> rdf:type owl:DatatypeProperty ;
+                                         rdfs:domain <http://dbpedia.org/ontology/Country> ;
+                                         rdfs:range xsd:int .
+
+
+###  http://dbpedia.org/ontology/postalCode
+<http://dbpedia.org/ontology/postalCode> rdf:type owl:DatatypeProperty ;
+                                         rdfs:domain <http://dbpedia.org/ontology/City> ;
+                                         rdfs:range xsd:int .
+
+
+###  http://dbpedia.org/ontology/title
+<http://dbpedia.org/ontology/title> rdf:type owl:DatatypeProperty ;
+                                    rdfs:domain <http://dbpedia.org/ontology/Film> ;
+                                    rdfs:range xsd:string .
+
+
+###  http://dbpedia.org/ontology/year
+<http://dbpedia.org/ontology/year> rdf:type owl:DatatypeProperty ;
+                                   rdfs:domain <http://dbpedia.org/ontology/Film> ;
+                                   rdfs:range xsd:int .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://dbpedia.org/ontology/Actor
+<http://dbpedia.org/ontology/Actor> rdf:type owl:Class ;
+                                    rdfs:subClassOf <http://dbpedia.org/ontology/Person> .
+
+
+###  http://dbpedia.org/ontology/City
+<http://dbpedia.org/ontology/City> rdf:type owl:Class ;
+                                   rdfs:subClassOf <http://dbpedia.org/ontology/Location> .
+
+
+###  http://dbpedia.org/ontology/Country
+<http://dbpedia.org/ontology/Country> rdf:type owl:Class ;
+                                      rdfs:subClassOf <http://dbpedia.org/ontology/Location> .
+
+
+###  http://dbpedia.org/ontology/CreativeWork
+<http://dbpedia.org/ontology/CreativeWork> rdf:type owl:Class .
+
+
+###  http://dbpedia.org/ontology/Director
+<http://dbpedia.org/ontology/Director> rdf:type owl:Class ;
+                                       rdfs:subClassOf <http://dbpedia.org/ontology/Person> .
+
+
+###  http://dbpedia.org/ontology/Film
+<http://dbpedia.org/ontology/Film> rdf:type owl:Class ;
+                                   rdfs:subClassOf <http://dbpedia.org/ontology/CreativeWork> .
+
+
+###  http://dbpedia.org/ontology/GeographicArea
+<http://dbpedia.org/ontology/GeographicArea> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://dbpedia.org/ontology/Location> .
+
+
+###  http://dbpedia.org/ontology/Location
+<http://dbpedia.org/ontology/Location> rdf:type owl:Class .
+
+
+###  http://dbpedia.org/ontology/Person
+<http://dbpedia.org/ontology/Person> rdf:type owl:Class .
+
+
+###  http://dbpedia.org/ontology/ProductionCompany
+<http://dbpedia.org/ontology/ProductionCompany> rdf:type owl:Class .
+
+
+###  http://dbpedia.org/ontology/TelevisionShow
+<http://dbpedia.org/ontology/TelevisionShow> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://dbpedia.org/ontology/CreativeWork> .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi
