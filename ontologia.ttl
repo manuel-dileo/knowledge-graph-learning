@@ -38,8 +38,8 @@
                                          rdfs:range <http://dbpedia.org/ontology/Director> .
 
 
-###  http://dbpedia.org/ontology/editor
-<http://dbpedia.org/ontology/editor> rdf:type owl:ObjectProperty ;
+###  http://dbpedia.org/ontology/editing
+<http://dbpedia.org/ontology/editing> rdf:type owl:ObjectProperty ;
                                      rdfs:domain <http://dbpedia.org/ontology/Film> ;
                                      rdfs:range <http://dbpedia.org/ontology/Person> .
 
