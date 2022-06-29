@@ -1,0 +1,11 @@
+column_name, class, property, identifier, occurrence
+film title, Film, title, yes, 0
+location, City, cityName, yes, 0
+?, , , , , 
+production, ProductionCompany, tradingName, yes, 0 
+founder, , , , , 
+city, City, cityName, yes, 1
+cast, Actor, birthName, yes, 0
+birth date, Actor, birthDate, no, 0
+
+

@@ -7,7 +7,13 @@ import numpy as np
 from torch_geometric.data import HeteroData
 import torch
 from torch_geometric.nn import SAGEConv, to_hetero, GATConv
+import configparser
+import os
 
+config = configparser.ConfigParser()
+config_path=str(os.path.dirname(os.path.abspath(__file__))).split(os.sep)
+config_path = "/".join(config_path[0:len(config_path)-2])
+config.read(os.path.join(config_path, 'config.ini'))
 
 class GNN(torch.nn.Module):
     def __init__(self, hidden_channels, out_channels):
@@ -122,5 +128,5 @@ def test_hetlinkpre(model, edge_types, test_link):
 def train_and_save(model, out, optimizer, criterion, data):
     for epoch in range(1,1001):
         loss = train_hetlinkpre(model, out, optimizer, criterion, data)
-    torch.save(model.state_dict(), "git_repo/knowledge-graph-learning/models/model_weigths.pth")
+    torch.save(model.state_dict(), config['model']['path'])
 

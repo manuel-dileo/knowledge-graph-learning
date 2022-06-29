@@ -1,6 +1,12 @@
 from torch_geometric.data import HeteroData
 import torch
 from torch_geometric.nn import SAGEConv, to_hetero, GATConv
+import configparser
+import os
+config = configparser.ConfigParser()
+config_path=str(os.path.dirname(os.path.abspath(__file__))).split(os.sep)
+config_path = "/".join(config_path[0:len(config_path)-2])
+config.read(os.path.join(config_path, 'config.ini'))
 
 class GNN(torch.nn.Module):
     def __init__(self, hidden_channels, out_channels):
@@ -19,7 +25,7 @@ class GNN(torch.nn.Module):
 def set_model(data):
     model = GNN(hidden_channels=4, out_channels=2)
     model = to_hetero(model, data.metadata(), aggr='sum')
-    model.load_state_dict(torch.load('git_repo/knowledge-graph-learning/models/model_weigths.pth'))
+    model.load_state_dict(torch.load(config['model']['path']))
     return model
 
 def test_hetscores(model, test_link):
