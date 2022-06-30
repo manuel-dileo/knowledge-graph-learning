@@ -1,0 +1,7 @@
+column_name, class, property, identifier, occurrence
+title, Film, title, yes, 0
+actor, Actor, name, yes, 0
+director_name, Director, name, yes, 0 
+year, Film, year, no, 0
+
+

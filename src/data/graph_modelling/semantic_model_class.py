@@ -24,8 +24,8 @@ class SemanticModelClass():
         self.closure_classes = {}
         self.closure_graph = nx.MultiDiGraph()
         self.ontology = rdflib.Graph()
-        self.ontology.parse(self.config['ontology']['path'])
-
+#        self.ontology.parse(self.config['ontology']['path'])
+        self.ontology.parse("/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/external/ontologia.ttl")
     def draw_result(self,graph, filename):
         node_label = nx.get_node_attributes(graph,'id')
         pos = nx.spring_layout(graph)
@@ -173,7 +173,7 @@ class SemanticModelClass():
         query = " SELECT ?subclass  WHERE { ?subclass <"+ self.config["prefix"]["subclass"] + "> <" +superclass +">. }"
         result = self.ontology.query(query)
         for r in result:
-            if str(r) == candidate[0: len(candidate)-1]:
+            if str(r) == candidate:
                 return True
         return False
 
@@ -249,6 +249,189 @@ class SemanticModelClass():
         superclass_subclass = {}
 
         tot_classes = []
+        tot_instances = []
+        for node in semantic_model.nodes:
+            if node[0:4].startswith("http"):
+                closure_graph.add_node(node)
+                superclasses = self.get_superclass_of(node[0:len(node)-1])
+                tot_instances.append(node)
+                tot_classes.append(node[0:len(node)-1])
+                for superclass in superclasses:
+                    tot_classes.append(superclass)
+                    superclass = superclass+"0"
+                    tot_instances.append(superclass)
+                    if superclass not in list(superclass_subclass.keys()):
+                        superclass_subclass[superclass] = []
+                    superclass_subclass[superclass].append(node) 
+        
+        for node in tot_instances:
+            node = str(node)[0:len(node)-1]
+            query = " SELECT DISTINCT ?property ?class WHERE {"+\
+            " ?property rdfs:domain <"+ node +">."+\
+            " ?property rdfs:range ?class . ?class a " + self.config["ontology"]["class"]+".}"
+            
+            result = self.ontology.query(query)
+            for r in result:
+                rel = str(r[0])
+                obj = str(r[1])
+
+                node_istances = self.classes.get(node, 0)
+                obj_istances = self.classes.get(obj, 0)
+
+                for h in range(0, node_istances+1):
+                    for h2 in range(0, obj_istances+1):
+                        if node +str(h) in list(superclass_subclass.keys()) and obj+str(h2) in list(superclass_subclass.keys()):
+                            weight = 10
+                        elif node +str(h) in list(superclass_subclass.keys()) or obj+str(h2) in list(superclass_subclass.keys()):
+                            weight = 10
+                        else:
+                            weight = 1
+                        
+                        if not self.exists_edge(closure_graph, node +str(h), obj+str(h2), rel):
+                            closure_graph.add_edge(node +str(h), obj+str(h2), label = rel, weight = weight)
+        return closure_graph
+
+    def compute_closure_node(self,node):
+        closure_node = nx.MultiDiGraph()
+        superclass_subclass = {}
+
+        tot_classes = []
+
+        if node[0:4].startswith("http"): #non è una proprietà
+            closure_node.add_node(node)
+            superclasses = self.get_superclass_of(node)
+            tot_classes.append(node)
+            for superclass in superclasses:
+                tot_classes.append(superclass)
+
+                if superclass not in list(superclass_subclass.keys()):
+                    superclass_subclass[superclass] = []
+                superclass_subclass[superclass].append(node) 
+        
+        for node in tot_classes:
+            node = str(node)
+            query = " SELECT DISTINCT ?property ?class WHERE { {"+\
+            " ?property rdfs:domain <"+ node +">."+\
+            " ?property rdfs:range  ?class . ?class a " + self.config["ontology"]["class"]+".} "+\
+            " UNION { ?property rdfs:range <"+ node +">."+\
+            " ?property rdfs:domain  ?class . ?class a " + self.config["ontology"]["class"]+".}}"
+            
+            result = self.ontology.query(query)
+            for r in result:
+                rel = str(r[0])
+                obj = str(r[1])
+
+                if node in list(superclass_subclass.keys()) and obj in list(superclass_subclass.keys()):
+                    weight = 10
+                elif node in list(superclass_subclass.keys()) or obj in list(superclass_subclass.keys()):
+                    weight = 10
+                else:
+                    weight = 1
+                
+                if not self.exists_edge(closure_node, node, obj, rel):
+                    closure_node.add_edge(node, obj, label = rel, weight = weight)
+        return closure_node
+
+
+    def exists_edge(self,graph, u, v, label):
+        edges = graph.get_edge_data(u, v)
+
+        if edges == None:
+            return False
+
+        for i in range(0, len(edges)):
+            if label == edges[i]["label"]:
+                return True
+        return False
+        
+    def algorithm(self,semantic_model):
+        #closure = self.compute_closure_node("http://dbpedia.org/ontology/Director")
+        #return closure
+        Uc = [] 
+        Ut = []
+        Et = []
+        Er = []
+
+        #init UC and Ut
+        for node in semantic_model.nodes:
+            if node[0:4].startswith("http"):
+                Uc.append(node)
+            else:
+                Ut.append(node)
+
+        #Init Et and Er
+        for edge in semantic_model.edges:
+            label = semantic_model.get_edge_data(edge[0], edge[1])[0]
+            if edge[0][0:4].startswith("http") and edge[1][0:4].startswith("http"):
+                Er.append(label["label"])
+            else:
+                
+                Et.append(label["label"])
+
+        Uc_ini = Uc
+        for uc in Uc_ini:
+            us = ""
+            h = uc[len(uc)-2:]
+            C = uc[0: len(uc)-1]
+
+            closure_C = self.compute_closure_node(C)
+            for edge in closure_C.edges:
+                C1 = edge[0]
+                C2 = edge[1]
+
+                if self.is_subclass(C, C1):
+                    us = uc
+                else:
+                    if C1 not in Uc:
+                        uc1 = C1+str(h)
+                        Uc.append(uc1)
+                    k = self.classes[C1]
+                    us = C1+str(min(h,k))
+                if self.is_subclass(C, C2):
+                    ut = uc
+                else:
+                    
+        '''
+
+
+         def compute_closure_graph(self,semantic_model):
+        closure_graph = nx.MultiDiGraph()
+
+        for node in semantic_model.nodes:
+            if node[0:4].startswith("http"):
+                closure_graph.add_node(node)
+                superclasses = self.get_superclass_of(node[0:len(node)-1])
+
+                for superclass in superclasses:
+                    closure_graph.add_edge(node, str(superclass)+"0", label = 'subclass')
+
+        triples_to_add = []
+        for node in closure_graph.nodes:
+            node = str(node)
+            query = " SELECT DISTINCT ?property ?class WHERE {"+\
+            " ?property rdfs:domain <"+ node[0:len(node)-1]+">."+\
+            " ?property rdfs:range ?class . ?class a " + self.config["ontology"]["class"]+".}"
+            
+            result = self.ontology.query(query)
+
+            for r in result:
+                rel = str(r[0])
+                obj = str(r[1]) + "0"
+                triples_to_add.append((node, obj, rel))
+            
+        for triple in triples_to_add:
+            closure_graph.add_edge(triple[0], triple[1], label = triple[2])
+
+        return closure_graph
+        '''
+
+
+'''
+    def compute_closure_graph(self,semantic_model):
+        closure_graph = nx.MultiDiGraph()
+        superclass_subclass = {}
+
+        tot_classes = []
         for node in semantic_model.nodes:
             if node[0:4].startswith("http"):
                 closure_graph.add_node(node)
@@ -290,63 +473,4 @@ class SemanticModelClass():
                     closure_graph.add_edge(node, obj, label = rel, weight = 1)
         return closure_graph
 
-    def algorithm(self, semantic_model):
-        closure = self.compute_closure_graph(semantic_model)
-        print(graph_to_json(closure))
-        Uc = [] 
-        Ut = []
-        Et = []
-        Er = []
-        for node in semantic_model.nodes:
-            if node[0:4].startswith("http"):
-                Uc.append(node)
-            else:
-                Ut.append(node)
-
-        for edge in semantic_model.edges:
-            label = semantic_model.get_edge_data(edge[0], edge[1])[0]
-            if edge[0][0:4].startswith("http") and edge[1][0:4].startswith("http"):
-                Er.append(label["label"])
-            else:
-                
-                Et.append(label["label"])
-
-
-        '''
-        for uc in Uc:
-            for edge in closure.edges:
-                C1 = edge[0]
-                if self.is_subclass(uc, C1):
-                    us = uc
-
-
-         def compute_closure_graph(self,semantic_model):
-        closure_graph = nx.MultiDiGraph()
-
-        for node in semantic_model.nodes:
-            if node[0:4].startswith("http"):
-                closure_graph.add_node(node)
-                superclasses = self.get_superclass_of(node[0:len(node)-1])
-
-                for superclass in superclasses:
-                    closure_graph.add_edge(node, str(superclass)+"0", label = 'subclass')
-
-        triples_to_add = []
-        for node in closure_graph.nodes:
-            node = str(node)
-            query = " SELECT DISTINCT ?property ?class WHERE {"+\
-            " ?property rdfs:domain <"+ node[0:len(node)-1]+">."+\
-            " ?property rdfs:range ?class . ?class a " + self.config["ontology"]["class"]+".}"
-            
-            result = self.ontology.query(query)
-
-            for r in result:
-                rel = str(r[0])
-                obj = str(r[1]) + "0"
-                triples_to_add.append((node, obj, rel))
-            
-        for triple in triples_to_add:
-            closure_graph.add_edge(triple[0], triple[1], label = triple[2])
-
-        return closure_graph
-        '''
+'''
