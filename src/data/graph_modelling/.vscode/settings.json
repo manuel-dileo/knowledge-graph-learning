@@ -1,0 +1,7 @@
+{
+    "python.analysis.extraPaths": [
+        "./semantic_modelling_library",
+        "./semantic_modelling_library",
+        "./semantic_modelling_library"
+    ]
+}

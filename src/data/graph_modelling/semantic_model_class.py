@@ -51,7 +51,9 @@ class SemanticModelClass():
 
     def parse(self):
         semantic_model = nx.MultiDiGraph()
-        with open(self.config["semantic_model_csv"]["csv_path"]) as csv_file:
+        config_path=str(os.path.dirname(os.path.abspath(__file__))).split(os.sep)
+        config_path = "/".join(config_path[0:len(config_path)-3])
+        with open(config_path+self.config["semantic_model_csv"]["csv_path"], 'r') as csv_file:
             csv_reader = csv.reader(csv_file, delimiter=',')
             next(csv_reader, None)  # skip the headers
             line_count = 0
@@ -198,23 +200,41 @@ class SemanticModelClass():
          self.get_closure_classes()
          return self.get_edges()
 
-    def get_relation_type(relation):
+    def get_relation_type(self,relation):
         r_split = relation.split("/")
         return r_split[len(r_split)-1]
 
     def update_graph_weights(self, closure, weights):
-        for u,v in closure.edges:
-            rel = closure.get_edge_data(u,v)
-            u_type = self.get_relation_type(u)[:-1]
+
+        for edge in closure.edges:
+            u = edge[0]
+            v = edge[1]
+            rel = closure.get_edge_data(u,v)[0]
+            u_type = self.get_relation_type(str(u)[:-1])
             v_type = self.get_relation_type(v)[:-1]
             rel_type = self.get_relation_type(rel['label'])
-            weight = rel["weight"]
             try:
                 rgcn_weight = weights[(u_type,rel_type,v_type)]
             except KeyError:
                 rgcn_weight = 100
             rel["weight"] = abs(1-rgcn_weight*rel["weight"])
 
+        return closure
+
+    def set_graph_weights(self, closure, weights):
+        for edge in closure.edges:
+            u = edge[0]
+            v = edge[1]
+            rel = closure.get_edge_data(u,v)[0]
+            u_type = self.get_relation_type(str(u)[:-1])
+            v_type = self.get_relation_type(v)[:-1]
+            rel_type = self.get_relation_type(rel['label'])
+
+            try:
+                rgcn_weight = weights[(u_type,rel_type,v_type)]
+            except KeyError:
+                rgcn_weight  = 100.0
+            rel["weight"] = abs(rgcn_weight*1)
         return closure
 
     def graph_to_json(self,graph):
@@ -227,6 +247,7 @@ class SemanticModelClass():
     def compute_closure_graph(self,semantic_model):
         closure_graph = nx.MultiDiGraph()
         superclass_subclass = {}
+
         tot_classes = []
         for node in semantic_model.nodes:
             if node[0:4].startswith("http"):
@@ -234,6 +255,7 @@ class SemanticModelClass():
                 superclasses = self.get_superclass_of(node[0:len(node)-1])
                 tot_classes.append(node)
                 for superclass in superclasses:
+                    superclass = superclass+"0"
                     tot_classes.append(superclass)
                     if superclass not in list(superclass_subclass.keys()):
                         superclass_subclass[superclass] = []
@@ -246,10 +268,13 @@ class SemanticModelClass():
             " ?property rdfs:range ?class . ?class a " + self.config["ontology"]["class"]+".}"
             
             result = self.ontology.query(query)
-
+            
             for r in result:
+
                 rel = str(r[0])
                 obj = str(r[1])
+                if obj not in tot_classes:
+                    obj += "0"
 
                 if node in list(superclass_subclass.keys()) and obj in list(superclass_subclass.keys()):
                     for n in superclass_subclass[node]:

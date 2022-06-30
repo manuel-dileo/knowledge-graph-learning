@@ -25,7 +25,7 @@ class GNN(torch.nn.Module):
 def set_model(data):
     model = GNN(hidden_channels=4, out_channels=2)
     model = to_hetero(model, data.metadata(), aggr='sum')
-    model.load_state_dict(torch.load(config['model']['path']))
+    model.load_state_dict(torch.load(config_path+config['model']['path']))
     return model
 
 def test_hetscores(model, test_link):
