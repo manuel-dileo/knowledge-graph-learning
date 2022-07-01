@@ -42,9 +42,9 @@ def main():
     #semantic_model.draw_result(closure, path_image + "closure_node")
 
     Uc, Er = semantic_model.algorithm(sm)
-    print(Er)
-    #algo_graph = semantic_model.graph_creation_algorithm(sm)
-    #semantic_model.draw_result(algo_graph, path_image + "algo_graph")
+    #print(Er)
+    algo_graph = semantic_model.graph_creation_algorithm(sm)
+    semantic_model.draw_result(algo_graph, path_image + "algo_graph")
 
     #closure_graph = semantic_model.compute_closure_graph(sm)
     

@@ -301,7 +301,6 @@ class SemanticModelClass():
         tot_classes = []
 
         if node[0:4].startswith("http"): #non è una proprietà
-            closure_node.add_node(node)
             superclasses = self.get_superclass_of(node)
             tot_classes.append(node)
             for superclass in superclasses:
@@ -313,11 +312,9 @@ class SemanticModelClass():
         
         for node in tot_classes:
             node = str(node)
-            query = " SELECT DISTINCT ?property ?class WHERE { {"+\
+            query = " SELECT DISTINCT ?property ?class WHERE {"+\
             " ?property rdfs:domain <"+ node +">."+\
-            " ?property rdfs:range  ?class . ?class a " + self.config["ontology"]["class"]+".} "+\
-            " UNION { ?property rdfs:range <"+ node +">."+\
-            " ?property rdfs:domain  ?class . ?class a " + self.config["ontology"]["class"]+".}}"
+            " ?property rdfs:range  ?class . ?class a " + self.config["ontology"]["class"]+".} "
             
             result = self.ontology.query(query)
             for r in result:
@@ -333,6 +330,25 @@ class SemanticModelClass():
                 
                 if not self.exists_edge(closure_node, node, obj, rel):
                     closure_node.add_edge(node, obj, label = rel, weight = weight)
+
+            query = " SELECT DISTINCT ?property ?class WHERE {"+\
+            " ?property rdfs:range <"+ node +">."+\
+            " ?property rdfs:domain  ?class . ?class a " + self.config["ontology"]["class"]+".} "
+            
+            result = self.ontology.query(query)
+            for r in result:
+                rel = str(r[0])
+                subj = str(r[1])
+
+                if node in list(superclass_subclass.keys()) and subj in list(superclass_subclass.keys()):
+                    weight = 10
+                elif node in list(superclass_subclass.keys()) or subj in list(superclass_subclass.keys()):
+                    weight = 10
+                else:
+                    weight = 1
+                
+                if not self.exists_edge(closure_node, subj, node, rel):
+                    closure_node.add_edge(subj, node, label = rel, weight = weight)
         return closure_node
 
 
@@ -380,13 +396,19 @@ class SemanticModelClass():
             C = uc[0: len(uc)-1]
 
             closure_C = self.compute_closure_node(C)
-            for edge in closure_C.edges:
+            #self.draw_result(closure_C, "/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/graph_images/closure_node111")
+            
+            for edge in closure_C.out_edges:
+                #print(edge[0],edge[1], closure_C.get_edge_data(edge[0],edge[1]))
+
                 C1 = edge[0]
                 C2 = edge[1]
-                r = closure_C.get_edge_data(C1,C2)[0]['label']
+                relations = closure_C.get_edge_data(C1,C2)
 
+                us_list =[]
+                ut_list =[]
                 if self.is_subclass(C, C1) or C==C1:
-                    us = uc
+                    us_list.append(uc)
                 else:
                     uc1 = C1+"0"
                     if uc1 not in Uc:
@@ -397,13 +419,14 @@ class SemanticModelClass():
                             if len(subclasses)!= 0:
                                 for subclass in subclasses:
                                     k = Uc_occurrences.get(subclass,0)
-                                    us = subclass+str(min(h,k))
-                                    if us != ut and (us, r, ut) not in Er and (ut, r, ut) not in Er:
-                                        Er.append((us,r,ut))
-                                continue
+                                    us_list.append(subclass+str(min(h,k)))
+                        #k = Uc_occurrences.get(C2,0)
+                        #us = C1+str(min(h,k))
+                        #us_list.append(us)
                             #superclasses = self.get_superclasses(C1)
                 if self.is_subclass(C, C2) or C == C2:
                     ut = uc
+                    ut_list.append(ut)
                 else:
                     uc2 = C2+"0"
                     if uc2 not in Uc:
@@ -415,13 +438,16 @@ class SemanticModelClass():
                                 for subclass in subclasses:
                                     k = Uc_occurrences.get(subclass,0)
                                     ut = subclass+str(min(h,k))
-                                    if us != ut and (us, r, ut) not in Er and (ut, r, ut) not in Er:
-                                        Er.append((us,r,ut))
-                                continue
-                    k = Uc_occurrences.get(C2,0)
-                    ut = C2+str(min(h,k))
-                #if us != ut and (us, r, ut) not in Er and (ut, r, ut) not in Er:
-                #    Er.append((us,r,ut))
+                                    ut_list.append(ut)
+                    #k = Uc_occurrences.get(C2,0)
+                    #ut = C2+str(min(h,k))
+                    #ut_list.append(ut)
+                for us in us_list:
+                    for ut in ut_list:
+                        for i in relations:
+                            r = relations[i]["label"]
+                            if us != ut and (us, r, ut) not in Er and (ut, r, ut) not in Er:
+                                Er.append((us,r,ut))
         return (Uc, Er)
 
 
@@ -465,10 +491,14 @@ class SemanticModelClass():
             for edge in closure_C.edges:
                 C1 = edge[0]
                 C2 = edge[1]
-                r = closure_C.get_edge_data(C1,C2)[0]['label']
+                relations = closure_C.get_edge_data(C1,C2)
 
+
+                us_list =[]
+                ut_list =[]
                 if self.is_subclass(C, C1) or C==C1:
                     us = uc
+                    us_list.append(us)
                 else:
                     uc1 = C1+"0"
                     if uc1 not in graph:
@@ -480,14 +510,10 @@ class SemanticModelClass():
                                 for subclass in subclasses:
                                     k = Uc_occurrences.get(subclass,0)
                                     us = subclass+str(min(h,k))
-                                    if us != ut and not self.exists_edge(graph, us, ut, r):
-                                        graph.add_edge(us,ut,label = r)
-                                continue
-                            #superclasses = self.get_superclasses(C1)
-                    k = Uc_occurrences.get(C1,0)
-                    us = C1+str(min(h,k))
+                                    us_list.append(us)
                 if self.is_subclass(C, C2) or C == C2:
                     ut = uc
+                    ut_list.append(ut)
                 else:
                     uc2 = C2+"0"
                     if uc2 not in graph:
@@ -498,14 +524,16 @@ class SemanticModelClass():
                             if len(subclasses)!= 0:
                                 for subclass in subclasses:
                                     k = Uc_occurrences.get(subclass,0)
-                                    us = subclass+str(min(h,k))
-                                    if us != ut and not self.exists_edge(graph, us, ut, r):
-                                        graph.add_edge(us,ut,label = r)
-                                continue
-                    k = Uc_occurrences.get(C2,0)
-                    ut = C2+str(min(h,k))
-                #if us != ut and not self.exists_edge(graph, us, ut, r):
-                #    graph.add_edge(us,ut,label = r)
+                                    ut = subclass+str(min(h,k))
+                                    ut_list.append(ut)
+
+                for us in us_list:
+                    for ut in ut_list:
+                        for i in relations:
+                            r = relations[i]["label"]
+                            if us != ut and not self.exists_edge(graph, us, ut, r):
+                                    graph.add_edge(us,ut,label = r)
+
             return graph
         '''
 
