@@ -347,6 +347,7 @@ class SemanticModelClass():
     def algorithm(self,semantic_model):
         #closure = self.compute_closure_node("http://dbpedia.org/ontology/Director")
         #return closure
+        Uc_occurrences = {}
         Uc = [] 
         Ut = []
         Et = []
@@ -356,6 +357,7 @@ class SemanticModelClass():
         for node in semantic_model.nodes:
             if node[0:4].startswith("http"):
                 Uc.append(node)
+                Uc_occurrences[node[len(node)-1:]] = Uc_occurrences.get(node[len(node)-1:],0)+1
             else:
                 Ut.append(node)
 
@@ -371,26 +373,85 @@ class SemanticModelClass():
         Uc_ini = Uc
         for uc in Uc_ini:
             us = ""
-            h = uc[len(uc)-2:]
+            h = int(uc[len(uc)-1:])
             C = uc[0: len(uc)-1]
 
             closure_C = self.compute_closure_node(C)
             for edge in closure_C.edges:
                 C1 = edge[0]
                 C2 = edge[1]
+                r = closure_C.get_edge_data(C1,C2)[0]['label']
 
-                if self.is_subclass(C, C1):
+                if self.is_subclass(C, C1) or C==C1:
                     us = uc
                 else:
-                    if C1 not in Uc:
-                        uc1 = C1+str(h)
+                    uc1 = C1+"0"
+                    if uc1 not in Uc:
                         Uc.append(uc1)
-                    k = self.classes[C1]
+                    k = Uc_occurrences.get(C1,0)
                     us = C1+str(min(h,k))
-                if self.is_subclass(C, C2):
+                if self.is_subclass(C, C2) or C == C2:
                     ut = uc
                 else:
-                    
+                    uc2 = C2+"0"
+                    if uc2 not in Uc:
+                        Uc.append(uc2)
+                    k = Uc_occurrences.get(C2,0)
+                    ut = C2+str(min(h,k))
+                if us != ut and (us, r, ut) not in Er and (ut, r, ut) not in Er:
+                    Er.append((us,r,ut))
+        return (Uc, Er)
+
+    def graph_creation_algorithm(self,semantic_model):
+        #closure = self.compute_closure_node("http://dbpedia.org/ontology/Director")
+        #return closure
+        Uc_occurrences = {}
+        graph = nx.MultiDiGraph()
+        graph_ini = nx.MultiDiGraph()
+
+        #init UC and Ut
+        for node in semantic_model.nodes:
+            if node[0:4].startswith("http"):
+                graph.add_node(node)
+                Uc_occurrences[node[len(node)-1:]] = Uc_occurrences.get(node[len(node)-1:],0)+1
+
+        #Init Et and Er
+        for edge in semantic_model.edges:
+            label = semantic_model.get_edge_data(edge[0], edge[1])[0]
+            if edge[0][0:4].startswith("http") and edge[1][0:4].startswith("http"):
+                graph.add_edge(edge[0],edge[1])
+
+        graph_ini = graph
+        for uc in graph_ini.nodes:
+            us = ""
+            h = int(uc[len(uc)-1:])
+            C = uc[0: len(uc)-1]
+
+            closure_C = self.compute_closure_node(C)
+            for edge in closure_C.edges:
+                C1 = edge[0]
+                C2 = edge[1]
+                r = closure_C.get_edge_data(C1,C2)[0]['label']
+
+                if self.is_subclass(C, C1) or C==C1:
+                    us = uc
+                else:
+                    uc1 = C1+"0"
+                    if uc1 not in graph:
+                        graph.add_node(uc1)
+                    k = Uc_occurrences.get(C1,0)
+                    us = C1+str(min(h,k))
+                if self.is_subclass(C, C2) or C == C2:
+                    ut = uc
+                else:
+                    uc2 = C2+"0"
+                    if uc2 not in graph:
+                        graph.add_node(uc2)
+                    k = Uc_occurrences.get(C2,0)
+                    ut = C2+str(min(h,k))
+                if us != ut and not self.exists_edge(graph, us, ut, r):
+                    graph.add_edge(us,ut,label = r)
+            return graph
         '''
 
 
