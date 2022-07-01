@@ -362,7 +362,8 @@ class SemanticModelClass():
             if label == edges[i]["label"]:
                 return True
         return False
-        
+    
+
     def algorithm(self,semantic_model):
         #closure = self.compute_closure_node("http://dbpedia.org/ontology/Director")
         #return closure
@@ -371,12 +372,13 @@ class SemanticModelClass():
         Ut = []
         Et = []
         Er = []
-
+        Uc_ini = []
         #init UC and Ut
         for node in semantic_model.nodes:
             if node[0:4].startswith("http"):
                 Uc.append(node)
-                Uc_occurrences[node[len(node)-1:]] = Uc_occurrences.get(node[len(node)-1:],0)+1
+                Uc_ini.append(node)
+                Uc_occurrences[node[0:len(node)-1]] = Uc_occurrences.get(node[0:len(node)-1],0)+1
             else:
                 Ut.append(node)
 
@@ -389,7 +391,6 @@ class SemanticModelClass():
                 
                 Et.append(label["label"])
 
-        Uc_ini = Uc
         for uc in Uc_ini:
             us = ""
             h = int(uc[len(uc)-1:])
@@ -419,7 +420,10 @@ class SemanticModelClass():
                             if len(subclasses)!= 0:
                                 for subclass in subclasses:
                                     k = Uc_occurrences.get(subclass,0)
-                                    us_list.append(subclass+str(min(h,k)))
+                                    for i in range(k):
+                                        us = subclass+str(i)
+                                        if us in Uc_ini:
+                                            us_list.append(us)
                         #k = Uc_occurrences.get(C2,0)
                         #us = C1+str(min(h,k))
                         #us_list.append(us)
@@ -437,8 +441,10 @@ class SemanticModelClass():
                             if len(subclasses)!= 0:
                                 for subclass in subclasses:
                                     k = Uc_occurrences.get(subclass,0)
-                                    ut = subclass+str(min(h,k))
-                                    ut_list.append(ut)
+                                    for i in range(k):
+                                        ut = subclass+str(i)
+                                        if ut in Uc_ini:
+                                            ut_list.append(ut)
                     #k = Uc_occurrences.get(C2,0)
                     #ut = C2+str(min(h,k))
                     #ut_list.append(ut)
@@ -473,15 +479,16 @@ class SemanticModelClass():
         for node in semantic_model.nodes:
             if node[0:4].startswith("http"):
                 graph.add_node(node)
-                Uc_occurrences[node[len(node)-1:]] = Uc_occurrences.get(node[len(node)-1:],0)+1
+                graph_ini.add_node(node)
+                Uc_occurrences[node[0:len(node)-1]] = Uc_occurrences.get(node[0:len(node)-1],0)+1
 
         #Init Et and Er
         for edge in semantic_model.edges:
             label = semantic_model.get_edge_data(edge[0], edge[1])[0]
             if edge[0][0:4].startswith("http") and edge[1][0:4].startswith("http"):
                 graph.add_edge(edge[0],edge[1])
+                graph_ini.add_edge(edge[0],edge[1])
 
-        graph_ini = graph
         for uc in graph_ini.nodes:
             us = ""
             h = int(uc[len(uc)-1:])
@@ -492,8 +499,6 @@ class SemanticModelClass():
                 C1 = edge[0]
                 C2 = edge[1]
                 relations = closure_C.get_edge_data(C1,C2)
-
-
                 us_list =[]
                 ut_list =[]
                 if self.is_subclass(C, C1) or C==C1:
@@ -509,8 +514,10 @@ class SemanticModelClass():
                             if len(subclasses)!= 0:
                                 for subclass in subclasses:
                                     k = Uc_occurrences.get(subclass,0)
-                                    us = subclass+str(min(h,k))
-                                    us_list.append(us)
+                                    for i in range(k):
+                                        us = subclass+str(i)
+                                        if graph_ini.has_node(us):
+                                            us_list.append(us)
                 if self.is_subclass(C, C2) or C == C2:
                     ut = uc
                     ut_list.append(ut)
@@ -524,8 +531,10 @@ class SemanticModelClass():
                             if len(subclasses)!= 0:
                                 for subclass in subclasses:
                                     k = Uc_occurrences.get(subclass,0)
-                                    ut = subclass+str(min(h,k))
-                                    ut_list.append(ut)
+                                    for i in range(k):
+                                        ut = subclass+str(i)
+                                        if graph_ini.has_node(ut):
+                                            ut_list.append(ut)
 
                 for us in us_list:
                     for ut in ut_list:
@@ -534,7 +543,7 @@ class SemanticModelClass():
                             if us != ut and not self.exists_edge(graph, us, ut, r):
                                     graph.add_edge(us,ut,label = r)
 
-            return graph
+        return graph
         '''
 
 
