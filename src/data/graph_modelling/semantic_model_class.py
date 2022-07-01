@@ -153,10 +153,13 @@ class SemanticModelClass():
 
 
     def get_subclasses(self, class_node):
-        query = "SELECT ?all_super_classes WHERE { ?all_super_classes "+\
-        self.config["prefix"]["subclass"]+ " <"+class_node +">"
+        subclasses =[]
+        query = "SELECT ?all_super_classes WHERE { ?all_super_classes rdfs:subClassOf "+\
+                "<"+class_node +">.}"
         result = self.ontology.query(query)
-        return result
+        for r in result:
+            subclasses.append(str(r[0]))
+        return subclasses
     
 
     def get_superclass_of(self, node):
@@ -170,10 +173,10 @@ class SemanticModelClass():
 
     def is_subclass(self, candidate, superclass):
         superclass = superclass[0: len(superclass)-1]
-        query = " SELECT ?subclass  WHERE { ?subclass <"+ self.config["prefix"]["subclass"] + "> <" +superclass +">. }"
+        query = " SELECT ?subclass  WHERE { ?subclass rdfs:subClassOf <" +superclass +">. }"
         result = self.ontology.query(query)
         for r in result:
-            if str(r) == candidate:
+            if str(r[0]) == candidate:
                 return True
         return False
 
@@ -387,20 +390,51 @@ class SemanticModelClass():
                 else:
                     uc1 = C1+"0"
                     if uc1 not in Uc:
-                        Uc.append(uc1)
-                    k = Uc_occurrences.get(C1,0)
-                    us = C1+str(min(h,k))
+                        if not self.is_superclass_node(uc1, Uc):
+                            Uc.append(uc1)
+                        else:
+                            subclasses = self.get_subclasses(C1)
+                            if len(subclasses)!= 0:
+                                for subclass in subclasses:
+                                    k = Uc_occurrences.get(subclass,0)
+                                    us = subclass+str(min(h,k))
+                                    if us != ut and (us, r, ut) not in Er and (ut, r, ut) not in Er:
+                                        Er.append((us,r,ut))
+                                continue
+                            #superclasses = self.get_superclasses(C1)
                 if self.is_subclass(C, C2) or C == C2:
                     ut = uc
                 else:
                     uc2 = C2+"0"
                     if uc2 not in Uc:
-                        Uc.append(uc2)
+                        if not self.is_superclass_node(uc2, Uc):
+                            Uc.append(uc2)
+                        else:
+                            subclasses = self.get_subclasses(C2)
+                            if len(subclasses)!= 0:
+                                for subclass in subclasses:
+                                    k = Uc_occurrences.get(subclass,0)
+                                    ut = subclass+str(min(h,k))
+                                    if us != ut and (us, r, ut) not in Er and (ut, r, ut) not in Er:
+                                        Er.append((us,r,ut))
+                                continue
                     k = Uc_occurrences.get(C2,0)
                     ut = C2+str(min(h,k))
-                if us != ut and (us, r, ut) not in Er and (ut, r, ut) not in Er:
-                    Er.append((us,r,ut))
+                #if us != ut and (us, r, ut) not in Er and (ut, r, ut) not in Er:
+                #    Er.append((us,r,ut))
         return (Uc, Er)
+
+
+    def is_superclass_node(self, uc, Uc):
+        for uq in Uc:
+            if self.is_subclass(uq[0:len(uq)-1], uc):
+                return True
+
+        for uq in Uc:
+            if self.is_subclass(uc[0:len(uc)-1], uq):
+                return True
+        
+        return False
 
     def graph_creation_algorithm(self,semantic_model):
         #closure = self.compute_closure_node("http://dbpedia.org/ontology/Director")
@@ -438,7 +472,18 @@ class SemanticModelClass():
                 else:
                     uc1 = C1+"0"
                     if uc1 not in graph:
-                        graph.add_node(uc1)
+                        if not self.is_superclass_node(uc1, graph.nodes):
+                            graph.add_node(uc1)
+                        else:
+                            subclasses = self.get_subclasses(C1)
+                            if len(subclasses)!= 0:
+                                for subclass in subclasses:
+                                    k = Uc_occurrences.get(subclass,0)
+                                    us = subclass+str(min(h,k))
+                                    if us != ut and not self.exists_edge(graph, us, ut, r):
+                                        graph.add_edge(us,ut,label = r)
+                                continue
+                            #superclasses = self.get_superclasses(C1)
                     k = Uc_occurrences.get(C1,0)
                     us = C1+str(min(h,k))
                 if self.is_subclass(C, C2) or C == C2:
@@ -446,11 +491,21 @@ class SemanticModelClass():
                 else:
                     uc2 = C2+"0"
                     if uc2 not in graph:
-                        graph.add_node(uc2)
+                        if not self.is_superclass_node(uc2, graph.nodes):
+                            graph.add_node(uc2)
+                        else:
+                            subclasses = self.get_subclasses(C2)
+                            if len(subclasses)!= 0:
+                                for subclass in subclasses:
+                                    k = Uc_occurrences.get(subclass,0)
+                                    us = subclass+str(min(h,k))
+                                    if us != ut and not self.exists_edge(graph, us, ut, r):
+                                        graph.add_edge(us,ut,label = r)
+                                continue
                     k = Uc_occurrences.get(C2,0)
                     ut = C2+str(min(h,k))
-                if us != ut and not self.exists_edge(graph, us, ut, r):
-                    graph.add_edge(us,ut,label = r)
+                #if us != ut and not self.exists_edge(graph, us, ut, r):
+                #    graph.add_edge(us,ut,label = r)
             return graph
         '''
 
