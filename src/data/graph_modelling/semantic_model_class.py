@@ -415,19 +415,30 @@ class SemanticModelClass():
                     if uc1 not in Uc:
                         if not self.is_superclass_node(uc1, Uc):
                             Uc.append(uc1)
+                            us_list.append(uc1)
+                            if C1 not in Uc_occurrences:
+                                Uc_occurrences[C1] = 1
                         else:
                             subclasses = self.get_subclasses(C1)
+                            superclasses = self.get_superclasses(C1)
                             if len(subclasses)!= 0:
                                 for subclass in subclasses:
                                     k = Uc_occurrences.get(subclass,0)
                                     for i in range(k):
                                         us = subclass+str(i)
-                                        if us in Uc_ini:
+                                        if us in Uc:
+                                            us_list.append(us)
+                            if len(superclasses) != 0:
+                                for superclass in superclasses:
+                                    k = Uc_occurrences.get(superclass,0)
+                                    for i in range(k):
+                                        us = C1+str(i)
+                                        if us in Uc:
                                             us_list.append(us)
                         #k = Uc_occurrences.get(C2,0)
                         #us = C1+str(min(h,k))
                         #us_list.append(us)
-                            #superclasses = self.get_superclasses(C1)
+                        #superclasses = self.get_superclasses(C1)
                 if self.is_subclass(C, C2) or C == C2:
                     ut = uc
                     ut_list.append(ut)
@@ -436,6 +447,9 @@ class SemanticModelClass():
                     if uc2 not in Uc:
                         if not self.is_superclass_node(uc2, Uc):
                             Uc.append(uc2)
+                            ut_list.append(uc2)
+                            if C2 not in Uc_occurrences:
+                                Uc_occurrences[C2] = 1
                         else:
                             subclasses = self.get_subclasses(C2)
                             if len(subclasses)!= 0:
@@ -443,7 +457,7 @@ class SemanticModelClass():
                                     k = Uc_occurrences.get(subclass,0)
                                     for i in range(k):
                                         ut = subclass+str(i)
-                                        if ut in Uc_ini:
+                                        if ut in Uc:
                                             ut_list.append(ut)
                     #k = Uc_occurrences.get(C2,0)
                     #ut = C2+str(min(h,k))
@@ -452,7 +466,7 @@ class SemanticModelClass():
                     for ut in ut_list:
                         for i in relations:
                             r = relations[i]["label"]
-                            if us != ut and (us, r, ut) not in Er and (ut, r, ut) not in Er:
+                            if us != ut and (us, r, ut) not in Er and (ut, r, ut) not in Er and (ut, r, us) not in Er:
                                 Er.append((us,r,ut))
         return (Uc, Er)
 
@@ -540,7 +554,7 @@ class SemanticModelClass():
                     for ut in ut_list:
                         for i in relations:
                             r = relations[i]["label"]
-                            if us != ut and not self.exists_edge(graph, us, ut, r):
+                            if us != ut and not self.exists_edge(graph, us, ut, r) and not self.exists_edge(graph, ut, us, r):
                                     graph.add_edge(us,ut,label = r)
 
         return graph
