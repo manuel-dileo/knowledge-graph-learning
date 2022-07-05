@@ -151,7 +151,6 @@ class SemanticModelClass():
 
         return list_result
 
-
     def get_subclasses(self, class_node):
         subclasses =[]
         query = "SELECT ?all_super_classes WHERE { ?all_super_classes rdfs:subClassOf "+\
@@ -162,13 +161,39 @@ class SemanticModelClass():
         return subclasses
     
 
-    def get_superclass_of(self, node):
+    def get_superclass(self, node):
         query = "SELECT ?super_class WHERE { <"+node +"> <"+\
         self.config["prefix"]["subclass"]+ "> ?super_class .}"
         result = self.ontology.query(query)
         res = []
         for r in result:
             res.append(str(r[0]))
+        return res
+
+    def get_outgoing_links(self, node):
+        query = "SELECT ?rel WHERE { ?rel rdfs:domain <"+node +"> .}"
+        result = self.ontology.query(query)
+        res = []
+        for r in result:
+            res.append(str(r[0]))
+        return res
+
+    def get_out_links_and_obj(self,node):
+        query = "SELECT ?rel ?relatedClass WHERE { ?rel rdfs:domain <"+node +">; "+\
+            "rdf:type owl:ObjectProperty; rdfs:range ?relatedClass .}"
+        result = self.ontology.query(query)
+        res = []
+        for r in result:
+            res.append((str(r[0]), str(r[1])))
+        return res
+
+    def get_ingoing_links_and_subj(self,node):
+        query = "SELECT ?rel ?relatedClass WHERE { ?rel rdfs:range <"+node +">.; "+\
+            "rdf:type owl:ObjectProperty; rdfs:range ?relatedClass .}"
+        result = self.ontology.query(query)
+        res = []
+        for r in result:
+            res.append((str(r[1]), str(r[0])))
         return res
 
     def is_subclass(self, candidate, superclass):
@@ -256,7 +281,7 @@ class SemanticModelClass():
         for node in semantic_model.nodes:
             if node[0:4].startswith("http"):
                 closure_graph.add_node(node)
-                superclasses = self.get_superclass_of(node[0:len(node)-1])
+                superclasses = self.get_superclass(node[0:len(node)-1])
                 tot_instances.append(node)
                 tot_classes.append(node[0:len(node)-1])
                 for superclass in superclasses:
@@ -301,7 +326,7 @@ class SemanticModelClass():
         tot_classes = []
 
         if node[0:4].startswith("http"): #non è una proprietà
-            superclasses = self.get_superclass_of(node)
+            superclasses = self.get_superclass(node)
             tot_classes.append(node)
             for superclass in superclasses:
                 tot_classes.append(superclass)
@@ -404,7 +429,10 @@ class SemanticModelClass():
 
                 C1 = edge[0]
                 C2 = edge[1]
-                relations = closure_C.get_edge_data(C1,C2)
+                relations=[]
+                rel = closure_C.get_edge_data(C1,C2)
+                for i in range(len(rel)):
+                    relations.append(rel[i]["label"])
 
                 us_list =[]
                 ut_list =[]
@@ -413,14 +441,14 @@ class SemanticModelClass():
                 else:
                     uc1 = C1+"0"
                     if uc1 not in Uc:
-                        if not self.is_superclass_node(uc1, Uc):
+                        if not self.is_superclass_or_subclass_of(uc1, Uc):
                             Uc.append(uc1)
                             us_list.append(uc1)
                             if C1 not in Uc_occurrences:
                                 Uc_occurrences[C1] = 1
                         else:
                             subclasses = self.get_subclasses(C1)
-                            superclasses = self.get_superclasses(C1)
+                            superclasses = self.get_superclass(C1)
                             if len(subclasses)!= 0:
                                 for subclass in subclasses:
                                     k = Uc_occurrences.get(subclass,0)
@@ -428,50 +456,94 @@ class SemanticModelClass():
                                         us = subclass+str(i)
                                         if us in Uc:
                                             us_list.append(us)
-                            if len(superclasses) != 0:
-                                for superclass in superclasses:
-                                    k = Uc_occurrences.get(superclass,0)
-                                    for i in range(k):
-                                        us = C1+str(i)
-                                        if us in Uc:
-                                            us_list.append(us)
+                    else:
+                        us_list.append(uc1)
+                        '''
+                        if len(superclasses) != 0:
+                            for superclass in superclasses:
+                                us_superclasses += self.get_out_links_and_obj(superclass)
+                                us_list.append(uc1)
+                        '''
+                                    #
+                                    #relations += superclass_relations
                         #k = Uc_occurrences.get(C2,0)
                         #us = C1+str(min(h,k))
                         #us_list.append(us)
                         #superclasses = self.get_superclasses(C1)
                 if self.is_subclass(C, C2) or C == C2:
-                    ut = uc
-                    ut_list.append(ut)
+                    ut_list.append(uc)
                 else:
                     uc2 = C2+"0"
                     if uc2 not in Uc:
-                        if not self.is_superclass_node(uc2, Uc):
+                        
+                        if not self.is_superclass_or_subclass_of(uc2, Uc):
                             Uc.append(uc2)
                             ut_list.append(uc2)
                             if C2 not in Uc_occurrences:
                                 Uc_occurrences[C2] = 1
                         else:
                             subclasses = self.get_subclasses(C2)
+                            superclasses = self.get_superclass(C1)
                             if len(subclasses)!= 0:
                                 for subclass in subclasses:
                                     k = Uc_occurrences.get(subclass,0)
                                     for i in range(k):
                                         ut = subclass+str(i)
-                                        if ut in Uc:
-                                            ut_list.append(ut)
+                                        #if ut in Uc:
+                                           ut_list.append(ut)
+                    else:
+                        ut_list.append(uc2)
+                        '''
+                        if len(superclasses) != 0:
+                            for superclass in superclasses:
+                                ut_superclasses = self.get_ingoing_links_and_subj(superclass)
+                                for subj, rel in ut_superclasses:
+                                    if subj in us_list:
+                                        relations.append(rel)
+                        '''
+                '''        
+                for rel, obj in us_superclasses:
+                    if obj == ut[0:len(ut)-1]:
+                        relations.append(rel)
                     #k = Uc_occurrences.get(C2,0)
                     #ut = C2+str(min(h,k))
                     #ut_list.append(ut)
-                for us in us_list:
-                    for ut in ut_list:
-                        for i in relations:
-                            r = relations[i]["label"]
-                            if us != ut and (us, r, ut) not in Er and (ut, r, ut) not in Er and (ut, r, us) not in Er:
-                                Er.append((us,r,ut))
+                '''
+                n_min = min(len(us_list), len(ut_list))
+                n_max = max(len(us_list), len(ut_list))
+                
+                for r in relations:
+                    for i in range(n_min):
+                        ut = ut_list[i]
+                        us = us_list[i]
+                        if us != ut and (us, r, ut) not in Er and (ut, r, us) not in Er:
+                            Er.append((us,r,ut))
+                    
+                    if len(us_list) < len(ut_list):
+                        if len(us_list) == 0:
+                                break
+                        for i in range(n_min, n_max):
+                            us = us_list[n_min-1]
+                            ut = ut_list[i]
+                            if( us != ut  and 
+                                (us, r, ut) not in Er 
+                                and (ut, r, us) not in Er):
+                                Er.append((us,r,ut)) 
+                    elif len(us_list) > len(ut_list):
+                        if len(ut_list) == 0:
+                            break
+                        for i in range(n_min, n_max):
+                            us = us_list[i]
+                            ut = ut_list[n_min-1]
+                            if( us != ut and 
+                                (us, r, ut) not in Er 
+                                and (us, r, ut) not in Er):
+                                Er.append((us,r,ut))                 
+
         return (Uc, Er)
 
 
-    def is_superclass_node(self, uc, Uc):
+    def is_superclass_or_subclass_of(self, uc, Uc):
         for uq in Uc:
             if self.is_subclass(uq[0:len(uq)-1], uc):
                 return True
@@ -509,37 +581,50 @@ class SemanticModelClass():
             C = uc[0: len(uc)-1]
 
             closure_C = self.compute_closure_node(C)
-            for edge in closure_C.edges:
+            for edge in closure_C.out_edges:
                 C1 = edge[0]
                 C2 = edge[1]
-                relations = closure_C.get_edge_data(C1,C2)
+                relations=[]
+
+                rel = closure_C.get_edge_data(C1,C2)
+                for i in range(len(rel)):
+                    relations.append(rel[i]["label"])
+
                 us_list =[]
                 ut_list =[]
                 if self.is_subclass(C, C1) or C==C1:
-                    us = uc
-                    us_list.append(us)
+                    us_list.append(uc)
                 else:
                     uc1 = C1+"0"
                     if uc1 not in graph:
-                        if not self.is_superclass_node(uc1, graph.nodes):
+                        if not self.is_superclass_or_subclass_of(uc1, graph.nodes):
                             graph.add_node(uc1)
+                            us_list.append(uc1)
+                            if C1 not in Uc_occurrences:
+                                Uc_occurrences[C1] = 1
                         else:
                             subclasses = self.get_subclasses(C1)
+                            superclasses = self.get_superclass(C1)
                             if len(subclasses)!= 0:
                                 for subclass in subclasses:
                                     k = Uc_occurrences.get(subclass,0)
                                     for i in range(k):
                                         us = subclass+str(i)
-                                        if graph_ini.has_node(us):
+                                        if graph.has_node(us):
                                             us_list.append(us)
+                    else:
+                        us_list.append(uc1)
+
                 if self.is_subclass(C, C2) or C == C2:
-                    ut = uc
-                    ut_list.append(ut)
+                    ut_list.append(uc)
                 else:
                     uc2 = C2+"0"
                     if uc2 not in graph:
-                        if not self.is_superclass_node(uc2, graph.nodes):
+                        if not self.is_superclass_or_subclass_of(uc2, graph.nodes):
                             graph.add_node(uc2)
+                            ut_list.append(uc2)
+                            if C2 not in Uc_occurrences:
+                                Uc_occurrences[C2] = 1
                         else:
                             subclasses = self.get_subclasses(C2)
                             if len(subclasses)!= 0:
@@ -547,97 +632,36 @@ class SemanticModelClass():
                                     k = Uc_occurrences.get(subclass,0)
                                     for i in range(k):
                                         ut = subclass+str(i)
-                                        if graph_ini.has_node(ut):
+                                        if graph.has_node(ut):
                                             ut_list.append(ut)
+                    else:
+                        ut_list.append(uc2)
 
-                for us in us_list:
-                    for ut in ut_list:
-                        for i in relations:
-                            r = relations[i]["label"]
-                            if us != ut and not self.exists_edge(graph, us, ut, r) and not self.exists_edge(graph, ut, us, r):
-                                    graph.add_edge(us,ut,label = r)
+                n_min = min(len(us_list), len(ut_list))
+                n_max = max(len(us_list), len(ut_list))
+                
+                for r in relations:
+                    for i in range(n_min):
+                        ut = ut_list[i]
+                        us = us_list[i]
+                        if us != ut and not self.exists_edge(graph, us, ut, r) and not self.exists_edge(graph, ut, us, r):
+                            graph.add_edge(us,ut,label = r)
+                    
+                    if len(us_list) < len(ut_list):
+                        for i in range(n_min+1, n_max):
+                            us = us_list[n_min]
+                            ut = ut_list[i]
+                            if( us != ut  and 
+                                not self.exists_edge(graph, us, ut, r) 
+                                and not self.exists_edge(graph, ut, us, r)):
+                                graph.add_edge(us,ut,label = r)
+                    elif len(us_list) > len(ut_list):
+                        for i in range(n_min+1, n_max):
+                            ut = ut_list[n_min]
+                            us = us_list[i]
+                            if( us != ut and 
+                                not self.exists_edge(graph, us, ut, r) 
+                                and not self.exists_edge(graph, ut, us, r)):
+                                graph.add_edge(us,ut,label = r)
 
         return graph
-        '''
-
-
-         def compute_closure_graph(self,semantic_model):
-        closure_graph = nx.MultiDiGraph()
-
-        for node in semantic_model.nodes:
-            if node[0:4].startswith("http"):
-                closure_graph.add_node(node)
-                superclasses = self.get_superclass_of(node[0:len(node)-1])
-
-                for superclass in superclasses:
-                    closure_graph.add_edge(node, str(superclass)+"0", label = 'subclass')
-
-        triples_to_add = []
-        for node in closure_graph.nodes:
-            node = str(node)
-            query = " SELECT DISTINCT ?property ?class WHERE {"+\
-            " ?property rdfs:domain <"+ node[0:len(node)-1]+">."+\
-            " ?property rdfs:range ?class . ?class a " + self.config["ontology"]["class"]+".}"
-            
-            result = self.ontology.query(query)
-
-            for r in result:
-                rel = str(r[0])
-                obj = str(r[1]) + "0"
-                triples_to_add.append((node, obj, rel))
-            
-        for triple in triples_to_add:
-            closure_graph.add_edge(triple[0], triple[1], label = triple[2])
-
-        return closure_graph
-        '''
-
-
-'''
-    def compute_closure_graph(self,semantic_model):
-        closure_graph = nx.MultiDiGraph()
-        superclass_subclass = {}
-
-        tot_classes = []
-        for node in semantic_model.nodes:
-            if node[0:4].startswith("http"):
-                closure_graph.add_node(node)
-                superclasses = self.get_superclass_of(node[0:len(node)-1])
-                tot_classes.append(node)
-                for superclass in superclasses:
-                    superclass = superclass+"0"
-                    tot_classes.append(superclass)
-                    if superclass not in list(superclass_subclass.keys()):
-                        superclass_subclass[superclass] = []
-                    superclass_subclass[superclass].append(node) 
-
-        for node in tot_classes:
-            node = str(node)
-            query = " SELECT DISTINCT ?property ?class WHERE {"+\
-            " ?property rdfs:domain <"+ node[0:len(node)-1]+">."+\
-            " ?property rdfs:range ?class . ?class a " + self.config["ontology"]["class"]+".}"
-            
-            result = self.ontology.query(query)
-            
-            for r in result:
-
-                rel = str(r[0])
-                obj = str(r[1])
-                if obj not in tot_classes:
-                    obj += "0"
-
-                if node in list(superclass_subclass.keys()) and obj in list(superclass_subclass.keys()):
-                    for n in superclass_subclass[node]:
-                        for n2 in superclass_subclass[obj]:
-                            closure_graph.add_edge(n, n2, label = rel, weight = 10)
-                elif node in list(superclass_subclass.keys()):
-                    for n in superclass_subclass[node]:
-                        closure_graph.add_edge(n, obj, label = rel, weight = 10)
-                elif obj in list(superclass_subclass.keys()):
-                    for n2 in superclass_subclass[obj]:
-                        closure_graph.add_edge(node, n2, label = rel, weight = 10)
-                else:
-                    closure_graph.add_edge(node, obj, label = rel, weight = 1)
-        return closure_graph
-
-'''
