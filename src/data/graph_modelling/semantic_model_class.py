@@ -1,6 +1,7 @@
 import csv
 from email import header
 import os
+from re import S, sub
 from matplotlib.pyplot import cla
 import matplotlib.pyplot as plt
 import networkx as nx
@@ -25,7 +26,7 @@ class SemanticModelClass():
         self.closure_graph = nx.MultiDiGraph()
         self.ontology = rdflib.Graph()
 #        self.ontology.parse(self.config['ontology']['path'])
-        self.ontology.parse("/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/external/ontologia.ttl")
+        self.ontology.parse("/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/external/ontologia_ereditarieta_livelli.ttl")
     def draw_result(self,graph, filename):
         node_label = nx.get_node_attributes(graph,'id')
         pos = nx.spring_layout(graph)
@@ -64,11 +65,11 @@ class SemanticModelClass():
                         continue
                     
                     node_name = self.config["prefix"]["classes"] + row[1].strip()
-                    self.classes[node_name]= self.classes.get(node_name, 0)
+                    #self.classes[node_name]= self.classes.get(node_name, 0)
 
                     #if the element is an identifier
                     if row[3].strip().lower() == 'yes':
-                        self.classes[node_name]= self.classes.get(node_name, 0)+int(row[4])
+                        self.classes[node_name]= self.classes.get(node_name, -1)+1
                         self.triples.append((node_name +str(self.classes[node_name]), row[2], row[0]))
                         semantic_model.add_edge(node_name +str(self.classes[node_name]),row[2], label = row[0])
 
@@ -387,12 +388,39 @@ class SemanticModelClass():
             if label == edges[i]["label"]:
                 return True
         return False
-    
+
+
+    def get_distance(self, C1, C2):
+        if C1 == C2:
+            return 0
+        superclass = self.get_superclasses([C2])
+        if len(superclass) == 0:
+            return 0
+        if C1 in superclass:
+            return 1
+        
+        return 1+ self.get_distance(C1, superclass[0])
+
+    def get_distance_undirected(self, C1,C2):
+        n = self.get_distance(C1, C2)
+        m = self.get_distance(C2, C1)
+        return max(n,m)
+
+    def homogenize_lists(self, us_list, ut_list):
+        if len(us_list) > len(ut_list):
+            for i in range(len(ut_list), len(us_list)):
+                ut_list.append(ut_list[len(ut_list)-1])
+        if len(us_list) < len(ut_list):
+            for i in range(len(us_list), len(ut_list)):
+                us_list.append(us_list[len(us_list)-1])
+        return (us_list, ut_list)
+
 
     def algorithm(self,semantic_model):
         #closure = self.compute_closure_node("http://dbpedia.org/ontology/Director")
         #return closure
         Uc_occurrences = {}
+
         Uc = [] 
         Ut = []
         Et = []
@@ -416,9 +444,21 @@ class SemanticModelClass():
                 
                 Et.append(label["label"])
 
+                #print(edge[0],edge[1], closure_C.get_edge_data(edge[0],edge[1]))
+        closure_classes = []
+        
+        for uc in Uc_ini:
+            C = uc[0: len(uc)-1]
+            closure_classes.append(C)
+            closure_C = self.compute_closure_node(C)
+            for edge in closure_C.out_edges:
+                if edge[0] not in closure_classes:
+                    closure_classes.append(edge[0])
+                if edge[0] not in closure_classes:
+                    closure_classes.append(edge[1])
+
         for uc in Uc_ini:
             us = ""
-            h = int(uc[len(uc)-1:])
             C = uc[0: len(uc)-1]
 
             closure_C = self.compute_closure_node(C)
@@ -426,7 +466,7 @@ class SemanticModelClass():
             
             for edge in closure_C.out_edges:
                 #print(edge[0],edge[1], closure_C.get_edge_data(edge[0],edge[1]))
-
+                epsilon = 10
                 C1 = edge[0]
                 C2 = edge[1]
                 relations=[]
@@ -443,6 +483,8 @@ class SemanticModelClass():
                     if uc1 not in Uc:
                         if not self.is_superclass_or_subclass_of(uc1, Uc):
                             Uc.append(uc1)
+                            if C1 not in closure_classes:
+                                closure_classes.append(C1)
                             us_list.append(uc1)
                             if C1 not in Uc_occurrences:
                                 Uc_occurrences[C1] = 1
@@ -454,22 +496,13 @@ class SemanticModelClass():
                                     k = Uc_occurrences.get(subclass,0)
                                     for i in range(k):
                                         us = subclass+str(i)
-                                        if us in Uc:
+                                        if subclass in closure_classes:
                                             us_list.append(us)
+                                    if k == 0 and subclass in closure_classes:
+                                        us_list.append(subclass+"0")
                     else:
                         us_list.append(uc1)
-                        '''
-                        if len(superclasses) != 0:
-                            for superclass in superclasses:
-                                us_superclasses += self.get_out_links_and_obj(superclass)
-                                us_list.append(uc1)
-                        '''
-                                    #
-                                    #relations += superclass_relations
-                        #k = Uc_occurrences.get(C2,0)
-                        #us = C1+str(min(h,k))
-                        #us_list.append(us)
-                        #superclasses = self.get_superclasses(C1)
+
                 if self.is_subclass(C, C2) or C == C2:
                     ut_list.append(uc)
                 else:
@@ -478,47 +511,53 @@ class SemanticModelClass():
                         
                         if not self.is_superclass_or_subclass_of(uc2, Uc):
                             Uc.append(uc2)
+                            if C2 not in closure_classes:
+                                closure_classes.append(C2)
                             ut_list.append(uc2)
                             if C2 not in Uc_occurrences:
                                 Uc_occurrences[C2] = 1
+                            superclasses = self.get_superclass(C2)
+                            if len(superclasses) != 0:
+                                for superclass in superclasses:
+                                    subclasses = self.get_subclasses(superclass)
+                                    for subclass in subclasses:
+                                        if subclass != C2 and subclass in closure_classes:
+                                            ut_list.append(subclass+"0")
                         else:
                             subclasses = self.get_subclasses(C2)
-                            superclasses = self.get_superclass(C1)
                             if len(subclasses)!= 0:
                                 for subclass in subclasses:
                                     k = Uc_occurrences.get(subclass,0)
                                     for i in range(k):
                                         ut = subclass+str(i)
-                                        #if ut in Uc:
-                                           ut_list.append(ut)
+                                        if subclass in closure_classes:
+                                            ut_list.append(ut)
+                                    if k == 0 and subclass in closure_classes:
+                                        ut_list.append(subclass+"0")
                     else:
                         ut_list.append(uc2)
-                        '''
-                        if len(superclasses) != 0:
-                            for superclass in superclasses:
-                                ut_superclasses = self.get_ingoing_links_and_subj(superclass)
-                                for subj, rel in ut_superclasses:
-                                    if subj in us_list:
-                                        relations.append(rel)
-                        '''
-                '''        
-                for rel, obj in us_superclasses:
-                    if obj == ut[0:len(ut)-1]:
-                        relations.append(rel)
-                    #k = Uc_occurrences.get(C2,0)
-                    #ut = C2+str(min(h,k))
-                    #ut_list.append(ut)
-                '''
-                n_min = min(len(us_list), len(ut_list))
-                n_max = max(len(us_list), len(ut_list))
-                
+
+                us_list, ut_list = self.homogenize_lists(us_list, ut_list)
+
                 for r in relations:
-                    for i in range(n_min):
-                        ut = ut_list[i]
+                    for i in range(len(us_list)):
                         us = us_list[i]
-                        if us != ut and (us, r, ut) not in Er and (ut, r, us) not in Er:
-                            Er.append((us,r,ut))
-                    
+                        ut = ut_list[i]
+
+                        H = Uc_occurrences.get(us[0:len(us)-1],0)
+                        K = Uc_occurrences.get(ut[0:len(ut)-1])
+                        h = int(us[len(us)-1:])
+                        k = int(ut[len(ut)-1:])
+
+                        Pr_source = self.get_distance_undirected(C1,us)
+                        Pr_dest = self.get_distance_undirected(C2,ut)
+                        Pr = (Pr_source + Pr_dest)*epsilon
+
+                        if us != ut and (us, r, ut, Pr) not in Er and (ut, r, us, Pr) not in Er:
+                            if (h == k) or (H <= K and h == H-1 and k > h) or (K-1 == k and h > k):
+                                Er.append((us,r,ut, Pr))
+
+                    '''
                     if len(us_list) < len(ut_list):
                         if len(us_list) == 0:
                                 break
@@ -528,18 +567,26 @@ class SemanticModelClass():
                             if( us != ut  and 
                                 (us, r, ut) not in Er 
                                 and (ut, r, us) not in Er):
-                                Er.append((us,r,ut)) 
+                                Pr_source = self.get_distance_undirected(C1,us)
+                                Pr_dest = self.get_distance_undirected(C2,ut)
+                                Pr = (Pr_source + Pr_dest)*epsilon
+                                Er.append((us,r,ut,Pr)) 
+                    
                     elif len(us_list) > len(ut_list):
                         if len(ut_list) == 0:
                             break
                         for i in range(n_min, n_max):
+
+                            Pr_source = self.get_distance_undirected(C1,us)
+                            Pr_dest = self.get_distance_undirected(C2,ut)
+                            Pr = (Pr_source + Pr_dest)*epsilon
                             us = us_list[i]
                             ut = ut_list[n_min-1]
                             if( us != ut and 
                                 (us, r, ut) not in Er 
                                 and (us, r, ut) not in Er):
-                                Er.append((us,r,ut))                 
-
+                                Er.append((us,r,ut, Pr))                 
+                    '''
         return (Uc, Er)
 
 
