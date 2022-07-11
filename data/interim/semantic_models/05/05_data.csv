@@ -1,0 +1,5 @@
+column_name, class, property, identifier, occurrence
+actor, Actor, birthName, yes, 0
+children, Actor, children, no, 0
+place_of_birth, City, cityName, yes, 0
+spouse, Actor, birthName, yes, 1

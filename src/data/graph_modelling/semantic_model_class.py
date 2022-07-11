@@ -26,7 +26,9 @@ class SemanticModelClass():
         self.closure_graph = nx.MultiDiGraph()
         self.ontology = rdflib.Graph()
 #        self.ontology.parse(self.config['ontology']['path'])
-        self.ontology.parse("/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/external/ontologia_ereditarieta_livelli.ttl")
+#        self.ontology.parse("/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/external/ontologia_ereditarieta_livelli.ttl")
+        self.ontology.parse("/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/external/ontologia.ttl")
+
     def draw_result(self,graph, filename):
         node_label = nx.get_node_attributes(graph,'id')
         pos = nx.spring_layout(graph)
@@ -405,6 +407,12 @@ class SemanticModelClass():
         n = self.get_distance(C1, C2)
         m = self.get_distance(C2, C1)
         return max(n,m)
+    
+    def class_exists_instances(self, class_name, instances):
+        for instance in instances:
+            if class_name == instance[0: len(instance)-1]:
+                return True
+        return False
 
     def homogenize_lists(self, us_list, ut_list):
         if len(us_list) > len(ut_list):
@@ -449,12 +457,17 @@ class SemanticModelClass():
         
         for uc in Uc_ini:
             C = uc[0: len(uc)-1]
-            closure_classes.append(C)
+            if C not in closure_classes:
+                closure_classes.append(C)
             closure_C = self.compute_closure_node(C)
             for edge in closure_C.out_edges:
+                if len(self.get_superclass(edge[0])) != 0 and not self.class_exists_instances(edge[0], Uc_ini):
+                    continue
+                if len(self.get_superclass(edge[1])) != 0 and not self.class_exists_instances(edge[1], Uc_ini):
+                    continue
                 if edge[0] not in closure_classes:
                     closure_classes.append(edge[0])
-                if edge[0] not in closure_classes:
+                if edge[1] not in closure_classes:
                     closure_classes.append(edge[1])
 
         for uc in Uc_ini:
@@ -482,12 +495,17 @@ class SemanticModelClass():
                     uc1 = C1+"0"
                     if uc1 not in Uc:
                         if not self.is_superclass_or_subclass_of(uc1, Uc):
-                            Uc.append(uc1)
-                            if C1 not in closure_classes:
-                                closure_classes.append(C1)
-                            us_list.append(uc1)
-                            if C1 not in Uc_occurrences:
-                                Uc_occurrences[C1] = 1
+                            if len(self.get_superclass(C1)) == 0:
+                                if C1 not in closure_classes:
+                                    closure_classes.append(C1)
+                                if C1 not in Uc_occurrences:
+                                    Uc_occurrences[C1] = 1
+                                us_list.append(uc1)
+                                Uc.append(uc1)
+                            elif len(self.get_superclass(C1)) != 0 and C1 in Uc:
+                                ut_list.append(uc1)
+                                Uc.append(uc1)
+
                         else:
                             subclasses = self.get_subclasses(C1)
                             superclasses = self.get_superclass(C1)
@@ -511,11 +529,13 @@ class SemanticModelClass():
                         
                         if not self.is_superclass_or_subclass_of(uc2, Uc):
                             Uc.append(uc2)
+
                             if C2 not in closure_classes:
                                 closure_classes.append(C2)
-                            ut_list.append(uc2)
                             if C2 not in Uc_occurrences:
                                 Uc_occurrences[C2] = 1
+                            ut_list.append(uc2)
+
                             superclasses = self.get_superclass(C2)
                             if len(superclasses) != 0:
                                 for superclass in superclasses:
@@ -537,6 +557,9 @@ class SemanticModelClass():
                     else:
                         ut_list.append(uc2)
 
+                if len(us_list) == 0 or len(ut_list) == 0:
+                    continue
+
                 us_list, ut_list = self.homogenize_lists(us_list, ut_list)
 
                 for r in relations:
@@ -545,7 +568,7 @@ class SemanticModelClass():
                         ut = ut_list[i]
 
                         H = Uc_occurrences.get(us[0:len(us)-1],0)
-                        K = Uc_occurrences.get(ut[0:len(ut)-1])
+                        K = Uc_occurrences.get(ut[0:len(ut)-1],0)
                         h = int(us[len(us)-1:])
                         k = int(ut[len(ut)-1:])
 

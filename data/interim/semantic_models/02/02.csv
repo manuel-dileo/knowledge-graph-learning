@@ -1,4 +1,7 @@
 column_name, class, property, identifier, occurrence
 title, Film, title, yes,0
 title, Film, title, yes,1
+title, Film, title, yes,2
+title, Film, title, yes,3
 location,City,cityName, yes,0
+location2,City,cityName, yes,1

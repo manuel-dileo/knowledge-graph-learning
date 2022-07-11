@@ -1,0 +1,6 @@
+column_name, class, property, identifier, occurrence
+tvSeriesName, TelevisionShow, title, yes, 0
+numberOfSeasons, TelevisionShow, NumberSeasons, no, 0
+numberOfEpisodes, TelevisionShow, NumberEpisodes, no, 0
+takesPlaceIn, Country, countryName, yes, 0
+producedBy, ProductionCompany, tradingName, yes, 0

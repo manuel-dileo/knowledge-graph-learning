@@ -1,0 +1,9 @@
+column_name, class, property, identifier, occurrence
+tv_series, TelevisionShow, title, yes, 0
+broadcaster, TelevisionShow, broadcaster, no, 0
+director, Director, birthName, yes, 0
+university, Director, almaMater, no, 0
+known_for, Director, knownFor, no, 0
+birth_city, City, cityName, yes, 0
+birth_country, Country, countryName, yes, 0
+

@@ -1,0 +1,6 @@
+column_name, class, property, identifier, occurrence
+title, Film, title, yes,0
+prod. company, ProductionCompany, tradingName, yes, 0
+founded_by,Person,birthName, yes,0
+key_person, Person, birthName, yes, 1
+foundingYear, ProductionCompany, foundingYear, no, 0
