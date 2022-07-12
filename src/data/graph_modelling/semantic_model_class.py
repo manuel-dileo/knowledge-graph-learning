@@ -199,6 +199,22 @@ class SemanticModelClass():
             res.append((str(r[1]), str(r[0])))
         return res
 
+    def check_relation_exists(self, us,r,ut):
+        us = us[0:len(us)-1]
+        ut = ut[0:len(ut)-1]
+        outgoing_links = []
+        superclasses1 = self.get_superclass(us)
+        superclasses2 = self.get_superclass(ut)
+
+        outgoing_links.extend(self.get_out_links_and_obj(us))
+        for superclass1 in superclasses1:
+            outgoing_links.extend(self.get_out_links_and_obj(superclass1))
+        
+        for rel, obj in outgoing_links:
+            if rel == r:
+                if obj == ut or obj in superclasses2:
+                    return True
+        return False
     def is_subclass(self, candidate, superclass):
         superclass = superclass[0: len(superclass)-1]
         query = " SELECT ?subclass  WHERE { ?subclass rdfs:subClassOf <" +superclass +">. }"
@@ -235,8 +251,8 @@ class SemanticModelClass():
         r_split = relation.split("/")
         return r_split[len(r_split)-1]
 
-    def update_graph_weights(self, closure, weights):
-
+    def update_graph_weights(self, closure, weights, set = True):
+        new_graph = nx.MultiDiGraph()
         for edge in closure.edges:
             u = edge[0]
             v = edge[1]
@@ -247,26 +263,14 @@ class SemanticModelClass():
             try:
                 rgcn_weight = weights[(u_type,rel_type,v_type)]
             except KeyError:
-                rgcn_weight = 100
-            rel["weight"] = abs(1-rgcn_weight*rel["weight"])
+                rgcn_weight = 100.0
 
-        return closure
+            if set:
+                new_graph.add_edge(u,v, label = rel_type, weight = abs(rgcn_weight*1))
+            else:
+                new_graph.add_edge(u,v, label = rel_type, weight = abs(1-rgcn_weight*rel["weight"]))
 
-    def set_graph_weights(self, closure, weights):
-        for edge in closure.edges:
-            u = edge[0]
-            v = edge[1]
-            rel = closure.get_edge_data(u,v)[0]
-            u_type = self.get_relation_type(str(u)[:-1])
-            v_type = self.get_relation_type(v)[:-1]
-            rel_type = self.get_relation_type(rel['label'])
-
-            try:
-                rgcn_weight = weights[(u_type,rel_type,v_type)]
-            except KeyError:
-                rgcn_weight  = 100.0
-            rel["weight"] = abs(rgcn_weight*1)
-        return closure
+        return new_graph
 
     def graph_to_json(self,graph):
         data1 = json_graph.node_link_data(graph)
@@ -509,7 +513,7 @@ class SemanticModelClass():
 
                         else:
                             subclasses = self.get_subclasses(C1)
-                            superclasses = self.get_superclass(C1)
+                             #superclasses = self.get_superclass(C1)
                             if len(subclasses)!= 0:
                                 for subclass in subclasses:
                                     k = Uc_occurrences.get(subclass,0)
@@ -579,8 +583,11 @@ class SemanticModelClass():
                             Pr = (Pr_source + Pr_dest)*epsilon
 
                             if us != ut and (us, r, ut, Pr) not in Er and (ut, r, us, Pr) not in Er:
-                                if (h == k) or (H <= K and h == H-1 and k > h) or (K-1 == k and h > k):
-                                    Er.append((us,r,ut, Pr))
+                                if ((us[0:len(us)-1] == ut[0:len(ut)-1]) or ( h == k) 
+                                    or (H <= K and h == H-1 and k > h) or (K-1 == k and h > k)):
+
+                                    if self.check_relation_exists(us,r,ut):
+                                        Er.append((us,r,ut, Pr))
         return (Uc, Er)
 
 
@@ -595,6 +602,7 @@ class SemanticModelClass():
         
         return False
 
+'''
     def graph_creation_algorithm(self,semantic_model):
         #closure = self.compute_closure_node("http://dbpedia.org/ontology/Director")
         #return closure
@@ -706,3 +714,4 @@ class SemanticModelClass():
                                 graph.add_edge(us,ut,label = r)
 
         return graph
+'''

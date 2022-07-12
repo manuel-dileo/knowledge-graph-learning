@@ -32,41 +32,59 @@ def main():
     config_path = str(os.path.dirname(os.path.abspath(__file__)))
     config.read(os.path.join(config_path, 'config.ini'))
 
-    #hetero_data = get_data()
-    #da scommentare solo per rieseguire il training
-    #model_training(hetero_data)
-    #relation_weights = predict_model.get_relations_weights(hetero_data)
-    
     semantic_model = semantic_model_class.SemanticModelClass()
     sm = semantic_model.parse()
-    #closure = semantic_model.compute_closure_graph(sm)
-    #semantic_model.draw_result(closure, path_image + "closure_node")
     #dist = semantic_model.get_distance("http://dbpedia.org/ontology/Person", "http://dbpedia.org/ontology/BodyDouble")
     #print("_-----------------", dist)
     
     Uc, Er = semantic_model.algorithm(sm)
-    er_graph = nx.MultiDiGraph()
+    closure_graph = nx.MultiDiGraph()
     for e in Er:
-        er_graph.add_node(e[0])
-        er_graph.add_node(e[2])
-        er_graph.add_edge(e[0],e[2], label = e[1])
-        print(e)
+        closure_graph.add_node(e[0])
+        closure_graph.add_node(e[2])
+        closure_graph.add_edge(e[0],e[2], label = e[1], weight = e[3])
+        #print(e)
+   
+    semantic_model.draw_result(closure_graph, path_image + "04")
+    '''
 
-    semantic_model.draw_result(er_graph, path_image + "00")
-
-    #algo_graph = semantic_model.graph_creation_algorithm(sm)
-    #semantic_model.draw_result(algo_graph, path_image + "02")
-
-    #closure_graph = semantic_model.compute_closure_graph(sm)
+    hetero_data = get_data()
+    #da scommentare solo per rieseguire il training
+    #model_training(hetero_data)
+    relation_weights = predict_model.get_relations_weights(hetero_data)
     
-    #new_closure = semantic_model.set_graph_weights(closure_graph, relation_weights)
+    print("-------------ontology_weights_only-----------")
+    for edge in closure_graph.edges:
+        u = edge[0]
+        v = edge[1]
+        rel = closure_graph.get_edge_data(u,v)[0]
+        print(u, rel["label"], v, rel["weight"])
 
-    #new_closure = semantic_model.update_graph_weights(closure_graph, relation_weights)
-    #ontology_weights_only = approximation.steiner_tree(closure_graph.to_undirected(), semantic_model.get_leafs(), weight='weight')
-    #only_rgcn = approximation.steiner_tree(new_closure.to_undirected(), semantic_model.get_leafs(), weight='weight')
+    both_weights = semantic_model.update_graph_weights(closure_graph, relation_weights, False)
+    rgcn_weights_only = semantic_model.update_graph_weights(closure_graph, relation_weights, True)
+    
+    print("-----------RGCN ONLY-----------------")
+    for edge in rgcn_weights_only.edges:
+        u = edge[0]
+        v = edge[1]
+        rel = rgcn_weights_only.get_edge_data(u,v)[0]
+        print(u, rel["label"], v, rel["weight"])
 
-    #semantic_model.draw_result(new_closure, path_image + "new_closure")
-    #semantic_model.draw_result(ontology_weights_only, path_image + "ontology_weights_only")
-    #print(semantic_model.graph_to_json(new_closure))
+    print("-----------BOTH-----------------")
+    for edge in both_weights.edges:
+        u = edge[0]
+        v = edge[1]
+        rel = both_weights.get_edge_data(u,v)[0]
+        print(u, rel["label"], v, rel["weight"])
 
+    #STEINER TREE
+    ontology_weights_only = approximation.steiner_tree(closure_graph.to_undirected(), semantic_model.get_leafs(), weight='weight')
+    only_rgcn = approximation.steiner_tree(rgcn_weights_only.to_undirected(), semantic_model.get_leafs(), weight='weight')
+    both_weights_tree = approximation.steiner_tree(both_weights.to_undirected(), semantic_model.get_leafs(), weight='weight')
+
+    #DRAW RESULT
+    semantic_model.draw_result(ontology_weights_only, path_image + "06_ontology_weights_only")
+    semantic_model.draw_result(only_rgcn, path_image + "06_only_rgcn")
+    semantic_model.draw_result(both_weights_tree, path_image + "06_both_weights_tree")
+    '''
 main()
