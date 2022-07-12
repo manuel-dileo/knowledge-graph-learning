@@ -406,6 +406,7 @@ class SemanticModelClass():
     def get_distance_undirected(self, C1,C2):
         n = self.get_distance(C1, C2)
         m = self.get_distance(C2, C1)
+        print("n ", n, "m ", m)
         return max(n,m)
     
     def class_exists_instances(self, class_name, instances):
@@ -565,51 +566,21 @@ class SemanticModelClass():
                 for r in relations:
                     for i in range(len(us_list)):
                         us = us_list[i]
-                        ut = ut_list[i]
+                        for j in range(len(us_list)):
+                            ut = ut_list[j]
 
-                        H = Uc_occurrences.get(us[0:len(us)-1],0)
-                        K = Uc_occurrences.get(ut[0:len(ut)-1],0)
-                        h = int(us[len(us)-1:])
-                        k = int(ut[len(ut)-1:])
+                            H = Uc_occurrences.get(us[0:len(us)-1],0)
+                            K = Uc_occurrences.get(ut[0:len(ut)-1],0)
+                            h = int(us[len(us)-1:])
+                            k = int(ut[len(ut)-1:])
 
-                        Pr_source = self.get_distance_undirected(C1,us)
-                        Pr_dest = self.get_distance_undirected(C2,ut)
-                        Pr = (Pr_source + Pr_dest)*epsilon
-
-                        if us != ut and (us, r, ut, Pr) not in Er and (ut, r, us, Pr) not in Er:
-                            if (h == k) or (H <= K and h == H-1 and k > h) or (K-1 == k and h > k):
-                                Er.append((us,r,ut, Pr))
-
-                    '''
-                    if len(us_list) < len(ut_list):
-                        if len(us_list) == 0:
-                                break
-                        for i in range(n_min, n_max):
-                            us = us_list[n_min-1]
-                            ut = ut_list[i]
-                            if( us != ut  and 
-                                (us, r, ut) not in Er 
-                                and (ut, r, us) not in Er):
-                                Pr_source = self.get_distance_undirected(C1,us)
-                                Pr_dest = self.get_distance_undirected(C2,ut)
-                                Pr = (Pr_source + Pr_dest)*epsilon
-                                Er.append((us,r,ut,Pr)) 
-                    
-                    elif len(us_list) > len(ut_list):
-                        if len(ut_list) == 0:
-                            break
-                        for i in range(n_min, n_max):
-
-                            Pr_source = self.get_distance_undirected(C1,us)
-                            Pr_dest = self.get_distance_undirected(C2,ut)
+                            Pr_source = self.get_distance(C1,us[0:len(us)-1])
+                            Pr_dest = self.get_distance(C2,ut[0:len(ut)-1])
                             Pr = (Pr_source + Pr_dest)*epsilon
-                            us = us_list[i]
-                            ut = ut_list[n_min-1]
-                            if( us != ut and 
-                                (us, r, ut) not in Er 
-                                and (us, r, ut) not in Er):
-                                Er.append((us,r,ut, Pr))                 
-                    '''
+
+                            if us != ut and (us, r, ut, Pr) not in Er and (ut, r, us, Pr) not in Er:
+                                if (h == k) or (H <= K and h == H-1 and k > h) or (K-1 == k and h > k):
+                                    Er.append((us,r,ut, Pr))
         return (Uc, Er)
 
 

@@ -27,7 +27,7 @@ def model_training(hetero_data):
     print(f'Train AUROC: {roc_train:.4f}\nTest AUROC: {roc_test:.4f}')
 
 def main():
-    path_image = "/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/interim/semantic_models/02/"
+    path_image = "/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/interim/semantic_models/"
     config = configparser.ConfigParser()
     config_path = str(os.path.dirname(os.path.abspath(__file__)))
     config.read(os.path.join(config_path, 'config.ini'))
@@ -41,8 +41,9 @@ def main():
     sm = semantic_model.parse()
     #closure = semantic_model.compute_closure_graph(sm)
     #semantic_model.draw_result(closure, path_image + "closure_node")
-    #dist = semantic_model.get_distance_undirected("http://dbpedia.org/ontology/Film", "http://dbpedia.org/ontology/Director")
+    #dist = semantic_model.get_distance("http://dbpedia.org/ontology/Person", "http://dbpedia.org/ontology/BodyDouble")
     #print("_-----------------", dist)
+    
     Uc, Er = semantic_model.algorithm(sm)
     er_graph = nx.MultiDiGraph()
     for e in Er:
@@ -50,8 +51,10 @@ def main():
         er_graph.add_node(e[2])
         er_graph.add_edge(e[0],e[2], label = e[1])
         print(e)
+
+    semantic_model.draw_result(er_graph, path_image + "00")
+
     #algo_graph = semantic_model.graph_creation_algorithm(sm)
-    semantic_model.draw_result(er_graph, path_image + "03333")
     #semantic_model.draw_result(algo_graph, path_image + "02")
 
     #closure_graph = semantic_model.compute_closure_graph(sm)
