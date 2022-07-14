@@ -1,3 +1,5 @@
+from asyncio import proactor_events
+from tkinter import S
 import rdflib
 from rdflib import URIRef, RDF
 from rdflib.namespace import Namespace
@@ -21,7 +23,21 @@ class MakeDataset():
         self.ontology.bind("owl", Namespace("http://www.w3.org/2002/07/owl#"))
         self.ontology.bind("rdf", Namespace("http://www.w3.org/1999/02/22-rdf-syntax-ns#"))
 
-    def get_relation_type(self, relation):
+
+    def get_property_type(self, property):
+        split_p = property.split("^^")
+        p_type = split_p[1].split("#")
+        if p_type[1].startswith("xsd:integer"):
+            return("Integer", split_p[0])
+        if p_type[1].startswith("xsd:string"):
+            return("String", split_p[0])
+        if p_type[1].startswith("xsd:double"):
+            return("Double", split_p[0])
+        if p_type[1].startswith("xsd:gYear"):
+            return("Year",split_p)
+        return ("","")
+
+    def get_type(self, relation):
         r_split = relation.split("/")
         return r_split[len(r_split)-1]
 
@@ -52,10 +68,11 @@ class MakeDataset():
             return results
         return self.possible_types[(subj_type,obj_type)]
 
-    def disambiguate_multiple_types(self, entities_and_type, s,p,o): 
+    def disambiguate_multiple_types(self, entities_and_type, s,p,o, properties_and_type = {}): 
         
         for subtype_subj in entities_and_type[str(s)]:
-
+            if subtype_subj in list(properties_and_type.keys()):
+                continue
             if len(entities_and_type[str(o)]) > 1:
                 for subtype_obj in entities_and_type[str(o)]:
                     possible_rels = self.get_possible_types( subtype_subj, subtype_obj)
@@ -71,67 +88,95 @@ class MakeDataset():
                 for rel in possible_rels:
                     if rel == p:
                         return (subtype_subj, subtype_obj)
-            
-        return ("","")    
+                
+            return ("","")    
 
-    def get_count(self, entities_and_type):
+    def get_count(self, entities_and_type, properties_and_types = {}):
         entity_types_count = {}
+        property_types_count = {}
         entities = []
         for entity in entities_and_type.keys():
             tipo = entities_and_type[entity][0]
             if tipo != "":
                 entity_types_count[tipo] = entity_types_count.get(tipo, 0)+1
                 entities.append(entity)
-        return entity_types_count, entities
 
-    def clean_triples(self, triples, entities_and_type):
+        for property in properties_and_types.keys():
+            for prop_name, prop_type, prop_value in properties_and_types[property]:
+                property_types_count[(property, prop_name,prop_type)] = property_types_count.get((property, prop_name,prop_type), 0)+1
+        return entity_types_count, entities, property_types_count
+
+    def clean_triples(self, triples, entities_and_type, properties_and_type = {}):
         new_triples = []
         added_types = []
 
         for s,p,o in triples:
-            if len(entities_and_type[str(s)]) > 1:
-                new_subj_type, new_obj_type = self.disambiguate_multiple_types(entities_and_type,s,p,o)
-                if(new_subj_type, new_obj_type) == ("",""):
-                    continue
-                #print("news", new_subj_type, "newo", new_obj_type, "sub", s, "obj", o)
-                if new_subj_type != "" and new_obj_type != "":
-                    if s not in added_types:
-                        new_triples.append((s, str(RDF.type),self.config["prefixes"]["ontology"]+ new_subj_type[0] ))
-                        added_types.append(s)
-                    if o not in added_types:
-                        new_triples.append((o,str(RDF.type),self.config["prefixes"]["ontology"]+ new_obj_type[0] ))
-                        added_types.append(o)
-                    new_triples.append((new_subj_type, p, new_obj_type))
-            else:  
-                if s not in added_types:
-                    new_triples.append((s, str(RDF.type),self.config["prefixes"]["ontology"]+entities_and_type[str(s)][0] ))
-                    added_types.append(s)
-                if o not in added_types:
-                    new_triples.append((o, str(RDF.type),self.config["prefixes"]["ontology"]+entities_and_type[str(o)][0] ))
-                    added_types.append(o)
-                new_triples.append((s, p, o))
-        
+            s1 = str(s)
+            p1 = str(p)
+            o1 = str(o)
+
+            if p != str(RDF.type):
+                if str(s) in list(properties_and_type.keys()):
+                    #x = properties_and_type[str(s)]
+                    new_triples.append((s, p, o))
+                if str(s) in list(entities_and_type.keys()) and str(o) in list(entities_and_type.keys()):
+                    if len(entities_and_type[str(s)]) > 1:
+                        new_subj_type, new_obj_type = self.disambiguate_multiple_types(entities_and_type,s,p,o, properties_and_type)
+                        if(new_subj_type, new_obj_type) == ("",""):
+                            continue
+                        #print("news", new_subj_type, "newo", new_obj_type, "sub", s, "obj", o)
+                        if new_subj_type != "" and new_obj_type != "":
+                            if s not in added_types:
+                                new_triples.append((s, str(RDF.type),self.config["prefixes"]["ontology"]+ new_subj_type[0] ))
+                                added_types.append(s)
+                            if o not in added_types:
+                                new_triples.append((o,str(RDF.type),self.config["prefixes"]["ontology"]+ new_obj_type[0] ))
+                                added_types.append(o)
+                            new_triples.append((new_subj_type, p, new_obj_type))
+                    else: 
+                        if s not in added_types:
+                            new_triples.append((s, str(RDF.type),self.config["prefixes"]["ontology"]+entities_and_type[str(s)][0] ))
+                            added_types.append(s)
+                        if o not in added_types and str(o).find("^^") == -1:
+                            new_triples.append((o, str(RDF.type),self.config["prefixes"]["ontology"]+entities_and_type[str(o)][0] ))
+                            added_types.append(o)
+                        new_triples.append((s, p, o))
         return new_triples
 
 
-    def get_subject_object(self, entities, triples, entities_and_type, entity_types_count):
+    def get_subject_object(self, entities, 
+                                triples, 
+                                entities_and_type, 
+                                entity_types_count, 
+                                properties_and_type = {},
+                                property_types_count = {}):
         subject_dict = {}
         object_dict = {}
 
-        new_triples= self.clean_triples(triples, entities_and_type)
+        new_triples= self.clean_triples(triples, entities_and_type, properties_and_type)
 
         index_dict = {t:{'count': 0} for t in entity_types_count.keys()}
+        for subject,rel, p_type in property_types_count.keys():
+            index_dict[p_type] = {'count':0}
         new_triples.sort()
         for triple in new_triples:
             s = str(triple[0])
             p = str(triple[1])
             o = str(triple[2])
 
-            if s in entities and o in entities:
-                p_type = self.get_relation_type(p)
-                s_type = entities_and_type[s][0]
+            type_triples = []
+            s_type = entities_and_type[s][0] 
+            if o.find("^^") == -1:
+                p_type = self.get_type(p)
                 o_type = entities_and_type[o][0]
+                type_triples.append((s_type,p_type, o_type))
+            else: 
+                for properties in properties_and_type[s]:
+                    p_type = properties[0] 
+                    o_type = properties[1]
+                    type_triples.append((s_type,p_type, o_type))
 
+            for s_type,p_type,o_type in type_triples:
                 if(s_type != "" and o_type != ""):
                     key_t = (s_type, p_type, o_type)
                     
@@ -156,15 +201,17 @@ class MakeDataset():
             #data[s_type, p_type, o_type].edge_index[1].append(entities.index(str(o)))
         return subject_dict, object_dict
 
-    def set_entities_and_type(self):
+    def set_entities_and_type(self, properties):
         entities_and_type = {}
+        properties_and_types ={}
         relations = []
         triples = []
-        triple_properties=[]
+
         # Process the Knowledge Graph
         g = rdflib.Graph()
         g.parse(self.config["kg"]["path"], format=self.config["kg"]["format"])
         for s, p, o in g:
+
             if str(p) != str(RDF.type):
                 if not str(s) in entities_and_type.keys():
                     entities_and_type[(str(s))] =[]
@@ -176,15 +223,23 @@ class MakeDataset():
                         entities_and_type[str(o)]=[]
                     triples.append((s,p,o))
                 else:
-                    triple_properties.append((str(s),str(p),str(o)))
-                
+                    if properties:
+                        if str(s) not in properties_and_types.keys():
+                            properties_and_types[str(s)] =[]
+                        p_type, p_value = self.get_property_type(str(o))
+                        if (str(s),p_type, p_value) not in properties_and_types[str(s)]:
+                            properties_and_types[str(s)].append((str(p), p_type, p_value))
+                        triples.append((str(s),str(p),str(o)))
             else:
                 if str(s) not in entities_and_type.keys():
                     entities_and_type[str(s)] =[]
-                
+                triples.append((str(s),str(p),str(o)))
                 split_o = str(o).split('/')
                 entities_and_type[str(s)].append(split_o[len(split_o)-1])
+
+#               properties_and_type[str(s)] = self.get_property_type(str(o))
+
         for e in entities_and_type:
             entities_and_type[e].sort()
 
-        return entities_and_type, triples
+        return entities_and_type, triples, properties_and_types

@@ -30,6 +30,7 @@ class SemanticModelClass():
         self.ontology.parse("/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/external/ontologia.ttl")
 
     def draw_result(self,graph, filename):
+        
         node_label = nx.get_node_attributes(graph,'id')
         pos = nx.spring_layout(graph)
         p=nx.drawing.nx_pydot.to_pydot(graph)
@@ -43,8 +44,9 @@ class SemanticModelClass():
             node_size=500, node_color='pink', alpha=0.9,
             labels={node: node for node in graph.nodes()}
         )
-        labels = dict([((n1, n2), f'{n1}->{n2}')
-                    for n1, n2, n3 in graph.edges])
+        labels = dict([((n1, n2), f'{n3}')
+                   for n1, n2, n3 in graph.edges])
+
         p = nx.draw_networkx_edge_labels(
             graph, pos,
             edge_labels=labels,
@@ -253,23 +255,37 @@ class SemanticModelClass():
 
     def update_graph_weights(self, closure, weights, set = True):
         new_graph = nx.MultiDiGraph()
+        added_triples = []
         for edge in closure.edges:
+
             u = edge[0]
             v = edge[1]
-            rel = closure.get_edge_data(u,v)[0]
-            u_type = self.get_relation_type(str(u)[:-1])
-            v_type = self.get_relation_type(v)[:-1]
-            rel_type = self.get_relation_type(rel['label'])
-            try:
-                rgcn_weight = weights[(u_type,rel_type,v_type)]
-            except KeyError:
-                rgcn_weight = 100.0
+            relations = closure.get_edge_data(u,v)
 
-            if set:
-                new_graph.add_edge(u,v, label = rel_type, weight = abs(rgcn_weight*1))
-            else:
-                new_graph.add_edge(u,v, label = rel_type, weight = abs(1-rgcn_weight*rel["weight"]))
+            for i in range(0, len(relations)):
+                u_type = self.get_relation_type(str(u)[:-1])
+                v_type = self.get_relation_type(v)[:-1]
+                rel_type = self.get_relation_type(relations[i]['label'])
+                try:
+                    rgcn_weight = weights[(u_type,rel_type,v_type)]
+                except KeyError:
+                    rgcn_weight = 100.0
+                
+                if (u,rel_type,v) not in added_triples:
+                    if set:
+                        w = round(abs(rgcn_weight*1),2)
+                        lw = rel_type + " - " + str(w)
+                        new_graph.add_edge(u,v, label = rel_type, weight = w, lw = lw)
+                        added_triples.append((u, rel_type, v))
+                    else:
+                        w = round(abs(1-rgcn_weight*relations[i]["weight"]))
+                        lw = rel_type + " - " + str(w)
 
+                        new_graph.add_edge(u,v, label = rel_type,
+                                            weight = w,
+                                            lw = lw)
+                        added_triples.append((u, rel_type, v))
+                    
         return new_graph
 
     def graph_to_json(self,graph):
@@ -508,7 +524,7 @@ class SemanticModelClass():
                                 us_list.append(uc1)
                                 Uc.append(uc1)
                             elif len(self.get_superclass(C1)) != 0 and C1 in Uc:
-                                ut_list.append(uc1)
+                                us_list.append(uc1)
                                 Uc.append(uc1)
 
                         else:
