@@ -34,7 +34,9 @@ class MakeDataset():
         if p_type[1].startswith("xsd:double"):
             return("Double", split_p[0])
         if p_type[1].startswith("xsd:gYear"):
-            return("Year",split_p)
+            return("Year",split_p[0])
+        if p_type[1].startswith("xsd:date"):
+            return("Date",split_p[0])
         return ("","")
 
     def get_type(self, relation):
@@ -67,6 +69,37 @@ class MakeDataset():
             self.possible_types[(subj_type,obj_type)] = results
             return results
         return self.possible_types[(subj_type,obj_type)]
+
+    def get_class_from_property(self):
+        Q = " SELECT ?property ?class WHERE {?property rdfs:domain ?class; rdf:type owl:DatatypeProperty. }"
+        results = {}
+        result = self.ontology.query(Q)
+        for res in result:
+            results[self.get_type(str(res[0]))]= self.get_type(str(res[1]))
+        return results
+    
+    def get_classes_types(self, properties_and_types):
+        prop_classes = self.get_class_from_property()
+        classes = {}
+        new_properties_and_types = {}
+        for s in list(properties_and_types.keys()):
+            for element in properties_and_types[s]:
+                prop = element[0] 
+                p_type = element[1]
+                p_value = element[2] 
+                
+                if prop in classes:
+                    if s not in new_properties_and_types:
+                        new_properties_and_types[s] = []
+                    new_properties_and_types[s].append((classes[prop], prop, p_type, p_value))
+                else:
+                    prop_class = prop_classes[prop]
+                    if s not in new_properties_and_types:
+                        new_properties_and_types[s] = []
+                    new_properties_and_types[s].append((prop_class, prop, p_type, p_value))
+                    classes[prop] = prop_class
+        
+        return new_properties_and_types
 
     def disambiguate_multiple_types(self, entities_and_type, s,p,o, properties_and_type = {}): 
         
@@ -101,9 +134,9 @@ class MakeDataset():
                 entity_types_count[tipo] = entity_types_count.get(tipo, 0)+1
                 entities.append(entity)
 
-        for property in properties_and_types.keys():
-            for prop_name, prop_type, prop_value in properties_and_types[property]:
-                property_types_count[(property, prop_name,prop_type)] = property_types_count.get((property, prop_name,prop_type), 0)+1
+        for subj in properties_and_types.keys():
+            for class_name, prop_name, prop_type, prop_value in properties_and_types[subj]:
+                property_types_count[(class_name, subj, prop_name, prop_type)] = property_types_count.get((class_name, subj, prop_name,prop_type), 0)+1
         return entity_types_count, entities, property_types_count
 
     def clean_triples(self, triples, entities_and_type, properties_and_type = {}):
@@ -156,52 +189,55 @@ class MakeDataset():
         new_triples= self.clean_triples(triples, entities_and_type, properties_and_type)
 
         index_dict = {t:{'count': 0} for t in entity_types_count.keys()}
-        for subject,rel, p_type in property_types_count.keys():
+
+        for class_name, subject,rel, p_type in property_types_count.keys():
             index_dict[p_type] = {'count':0}
         new_triples.sort()
         for triple in new_triples:
             s = str(triple[0])
             p = str(triple[1])
             o = str(triple[2])
-
             type_triples = []
             s_type = entities_and_type[s][0] 
-            if o.find("^^") == -1:
-                p_type = self.get_type(p)
-                o_type = entities_and_type[o][0]
-                type_triples.append((s_type,p_type, o_type))
-            else: 
-                for properties in properties_and_type[s]:
-                    p_type = properties[0] 
-                    o_type = properties[1]
-                    type_triples.append((s_type,p_type, o_type))
-
-            for s_type,p_type,o_type in type_triples:
-                if(s_type != "" and o_type != ""):
-                    key_t = (s_type, p_type, o_type)
-                    
-                    if key_t not in subject_dict.keys():
-                        subject_dict[key_t] = []
-                        object_dict[key_t] = []
-                        
-                    if str(s) not in index_dict[s_type]:
-                        index_dict[s_type][str(s)] = index_dict[s_type]['count']
-                        index_dict[s_type]['count'] = index_dict[s_type]['count']+1
-                    s_index = index_dict[s_type][str(s)]
-                        
-                    if str(o) not in index_dict[o_type]:
-                        index_dict[o_type][str(o)] = index_dict[o_type]['count']
-                        index_dict[o_type]['count'] = index_dict[o_type]['count']+1
-                    o_index = index_dict[o_type][str(o)]
-                        
-                    subject_dict[key_t].append(s_index)
-                    object_dict[key_t].append(o_index)
             
-            #data[s_type, p_type, o_type].edge_index[0].append(entities.index(str(s)))
-            #data[s_type, p_type, o_type].edge_index[1].append(entities.index(str(o)))
+            if p != str(RDF.type):
+                if o.find("^^") == -1:
+                    p_type = self.get_type(p)
+                    o_type = entities_and_type[o][0]
+                    type_triples.append((s_type,p_type, o_type))
+                else: 
+                    for properties in properties_and_type[s]:
+                        s_type = properties[0]
+                        p_type = self.get_type(properties[1])
+                        o_type = properties[2]
+                        type_triples.append((s_type,p_type, o_type))
+
+                for s_type,p_type,o_type in type_triples:
+                    if(s_type != "" and o_type != ""):
+                        key_t = (s_type, p_type, o_type)
+                        
+                        if key_t not in subject_dict.keys():
+                            subject_dict[key_t] = []
+                            object_dict[key_t] = []
+                            
+                        if str(s) not in index_dict[s_type]:
+                            index_dict[s_type][str(s)] = index_dict[s_type]['count']
+                            index_dict[s_type]['count'] = index_dict[s_type]['count']+1
+                        s_index = index_dict[s_type][str(s)]
+                            
+                        if str(o) not in index_dict[o_type]:
+                            index_dict[o_type][str(o)] = index_dict[o_type]['count']
+                            index_dict[o_type]['count'] = index_dict[o_type]['count']+1
+                        o_index = index_dict[o_type][str(o)]
+                            
+                        subject_dict[key_t].append(s_index)
+                        object_dict[key_t].append(o_index)
+                
+                #data[s_type, p_type, o_type].edge_index[0].append(entities.index(str(s)))
+                #data[s_type, p_type, o_type].edge_index[1].append(entities.index(str(o)))
         return subject_dict, object_dict
 
-    def set_entities_and_type(self, properties):
+    def set_entities_and_type(self, use_properties = False):
         entities_and_type = {}
         properties_and_types ={}
         relations = []
@@ -223,12 +259,12 @@ class MakeDataset():
                         entities_and_type[str(o)]=[]
                     triples.append((s,p,o))
                 else:
-                    if properties:
+                    if use_properties:
                         if str(s) not in properties_and_types.keys():
                             properties_and_types[str(s)] =[]
                         p_type, p_value = self.get_property_type(str(o))
                         if (str(s),p_type, p_value) not in properties_and_types[str(s)]:
-                            properties_and_types[str(s)].append((str(p), p_type, p_value))
+                            properties_and_types[str(s)].append((self.get_type(str(p)), p_type, p_value))
                         triples.append((str(s),str(p),str(o)))
             else:
                 if str(s) not in entities_and_type.keys():

@@ -10,8 +10,8 @@ import networkx as nx
 
 def get_data(properties = False):
     dataset = make_dataset.MakeDataset()
-    entities_and_type, triples, properties_and_types = dataset.set_entities_and_type(properties)
-
+    entities_and_type, triples, properties_and_types = dataset.set_entities_and_type(True)
+    properties_and_types = dataset.get_classes_types(properties_and_types)
     entity_types_count, entities, property_types_count = dataset.get_count(entities_and_type, properties_and_types)
     subject_dict, object_dict = dataset.get_subject_object(
                                                 entities, 
@@ -22,7 +22,7 @@ def get_data(properties = False):
                                                 property_types_count
                                                 )
 
-    hetero_data = train_model.create_data(entity_types_count, subject_dict, object_dict)
+    hetero_data = train_model.create_data(entity_types_count, subject_dict, object_dict, properties_and_types, property_types_count)
     return hetero_data
 
 def model_training(hetero_data):
@@ -41,11 +41,11 @@ def main():
     config.read(os.path.join(config_path, 'config.ini'))
 
     #semantic_model.draw_result(closure_graph, path_image + "01")
-    hetero_data = get_data(properties = True)
+    #hetero_data = get_data(properties = False)
 
     #da scommentare solo per rieseguire il training
     #model_training(hetero_data)
-    relation_weights = predict_model.get_relations_weights(hetero_data)
+    #relation_weights = predict_model.get_relations_weights(hetero_data)
 
 
     semantic_model = semantic_model_class.SemanticModelClass()
@@ -63,6 +63,7 @@ def main():
         lw = rel_type + " - " + str(e[3])
         closure_graph.add_edge(e[0],e[2], label = e[1], weight = e[3], lw = lw)
 
+    semantic_model.draw_result(closure_graph, path_image + "09_test")
 
     print("-------------ontology_weights_only-----------")
 
@@ -75,9 +76,14 @@ def main():
             if (u, relations[i]["label"], v, relations[i]["weight"], relations[i]["lw"]) not in list_closure:
                 list_closure.append((u, relations[i]["label"], v, relations[i]["weight"], relations[i]["lw"]))
     
-    for el in list_closure:
-        print(el)
     
+    ontology_weights_only_tree = approximation.steiner_tree(closure_graph.to_undirected(), semantic_model.get_leafs(), weight='weight')
+    for edge in ontology_weights_only_tree.edges(data=True): edge[2]['label'] = edge[2]['lw']
+    semantic_model.draw_result(ontology_weights_only_tree, path_image + "08_ontology_weights_only_tree")
+
+    #for el in list_closure:
+    #    print(el)
+    '''
     both_weights = semantic_model.update_graph_weights(closure_graph, relation_weights, False)
     rgcn_weights_only = semantic_model.update_graph_weights(closure_graph, relation_weights, True)
     
@@ -133,5 +139,5 @@ def main():
     semantic_model.draw_result(ontology_weights_only_tree, path_image + "06_ontology_weights_only_tree")
     semantic_model.draw_result(only_rgcn_tree, path_image + "06_only_rgcn_tree")
     semantic_model.draw_result(both_weights_tree, path_image + "06_both_weights_tree")
-    
+    '''
 main()

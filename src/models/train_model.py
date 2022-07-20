@@ -1,3 +1,5 @@
+from re import I
+from sklearn.linear_model import OrthogonalMatchingPursuit
 from torch_geometric.data import HeteroData
 import torch
 from torch_geometric.nn import SAGEConv, to_hetero, GATConv
@@ -9,6 +11,9 @@ import torch
 from torch_geometric.nn import SAGEConv, to_hetero, GATConv
 import configparser
 import os
+from langdetect import detect
+from dateutil.parser import parse
+import datetime, string
 
 config = configparser.ConfigParser()
 config_path=str(os.path.dirname(os.path.abspath(__file__))).split(os.sep)
@@ -40,16 +45,40 @@ def get_model(data):
 
     return model, out, optimizer, criterion
     
-def create_data(entity_types_count, subject_dict, object_dict):
+def create_data(entity_types_count, subject_dict, object_dict, properties_and_types = {}, property_types_count = {}):
     data = HeteroData()
     types = list(entity_types_count.keys())
     for t in types:
         data[t].x = torch.Tensor([[1] for i in range(entity_types_count[t])])
 
+    data_property = {}
+    for subj in list(properties_and_types.keys()):
+        for class_type, prop_name, prop_type, prop_value in properties_and_types[subj]:
+            if prop_type not in data_property:
+                data_property[prop_type] = []
+            else:
+                for i in range(property_types_count[(class_type, subj, prop_name, prop_type)]):
+                    data_property[prop_type].append(function_build_feature(prop_type, prop_value))
+                    #data_property['String'] = [[2,3,'en'], ]
+                    #data_property['Date'] = [[19],[210,2 ]
+
+    for key in list(data_property.keys()):
+        data[key].x = torch.Tensor(data_property[key])
+
+    #property_types_count[(property, prop_name,prop_type)] 
+    #properties_and_types[str(s)].append((str(p), p_type, p_value))
+
     for triple in subject_dict.keys():
         lol = [subject_dict[triple], object_dict[triple]]
         data[triple[0], triple[1], triple[2]].edge_index = torch.Tensor(lol).long()
+    '''
+    property_types = list(property_types_count.keys())
+    for t in property_types:
+        data['Integer'].x = torch.Tensor([[function_build_feature(tipo, valore)] for i in range(entity_types_count[t])])
 
+
+        data['Person', 'age', 'Integer'].edge_index = torch.Tensor(lol).long()
+    '''
     return data
 
 def split_dataset(data):
@@ -121,12 +150,40 @@ def test_hetlinkpre(model, edge_types, test_link):
     pred_cont = torch.sigmoid(hs).cpu().detach().numpy()
     
     # EVALUATION
-    test_roc_score = roc_auc_score(edge_labels, pred_cont) #comput AUROC score for test set
-    
-    return test_roc_score
+    test_roc_score = roc_auc_score(edge_labels)#, pred_function_build_feature
 
 def train_and_save(model, out, optimizer, criterion, data):
     for epoch in range(1,1001):
         loss = train_hetlinkpre(model, out, optimizer, criterion, data)
     torch.save(model.state_dict(), config['model']['path'])
+
+
+def function_build_feature(p_type, value):
+    #return [5] così funziona perchè è numerico
+    count = lambda l1, l2: len(list(filter(lambda c: c in l2, l1)))
+
+    #aggiungere funzione x riconscere le date
+    if p_type == 'Integer':
+        try:
+            i = int(value)
+        except:
+            i = 0
+        return [i]
+    if p_type == 'gYear':
+        return [int(1970-value)]
+    if p_type == 'String':
+        a_punct = count(value, string.punctuation)
+        lang = 0
+        try:
+            if detect(value) == 'en': lang = 1
+        except:
+            lang = 0
+        return [len(value), value.count(" ") , value.count("(") + value.count(")"), lang, a_punct]
+    if p_type == 'Date':
+        return [(parse(value) - datetime.datetime(1970,1,1)).days]
+
+
+def get_type(self, relation):
+    r_split = relation.split("/")
+    return r_split[len(r_split)-1]
 

@@ -13,7 +13,6 @@ import rdflib
 import json
 from networkx.readwrite import json_graph
 
-from src.data.graph_modelling.functions import graph_to_json
 
 class SemanticModelClass():
     def __init__(self):
@@ -218,7 +217,7 @@ class SemanticModelClass():
                     return True
         return False
     def is_subclass(self, candidate, superclass):
-        superclass = superclass[0: len(superclass)-1]
+        #superclass = superclass[0: len(superclass)-1]
         query = " SELECT ?subclass  WHERE { ?subclass rdfs:subClassOf <" +superclass +">. }"
         result = self.ontology.query(query)
         for r in result:
@@ -480,7 +479,13 @@ class SemanticModelClass():
             C = uc[0: len(uc)-1]
             if C not in closure_classes:
                 closure_classes.append(C)
-            closure_C = self.compute_closure_node(C)
+            closure_graph = self.compute_closure_node(C)
+
+            for node in closure_graph.nodes:
+                #if len(self.get_superclass(node)) == 0:
+                if node not in closure_classes:
+                    closure_classes.append(node)
+            '''
             for edge in closure_C.out_edges:
                 if len(self.get_superclass(edge[0])) != 0 and not self.class_exists_instances(edge[0], Uc_ini):
                     continue
@@ -490,6 +495,7 @@ class SemanticModelClass():
                     closure_classes.append(edge[0])
                 if edge[1] not in closure_classes:
                     closure_classes.append(edge[1])
+            '''
 
         for uc in Uc_ini:
             us = ""
@@ -497,7 +503,7 @@ class SemanticModelClass():
 
             closure_C = self.compute_closure_node(C)
             #self.draw_result(closure_C, "/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/graph_images/closure_node111")
-            
+
             for edge in closure_C.out_edges:
                 #print(edge[0],edge[1], closure_C.get_edge_data(edge[0],edge[1]))
                 epsilon = 10
@@ -505,229 +511,146 @@ class SemanticModelClass():
                 C2 = edge[1]
                 relations=[]
                 rel = closure_C.get_edge_data(C1,C2)
-                for i in range(len(rel)):
-                    relations.append(rel[i]["label"])
+                if rel != None:
+                    for i in range(len(rel)):
+                        relations.append(rel[i]["label"])
 
-                us_list =[]
-                ut_list =[]
-                if self.is_subclass(C, C1) or C==C1:
-                    us_list.append(uc)
-                else:
-                    uc1 = C1+"0"
-                    if uc1 not in Uc:
-                        if not self.is_superclass_or_subclass_of(uc1, Uc):
-                            if len(self.get_superclass(C1)) == 0:
-                                if C1 not in closure_classes:
-                                    closure_classes.append(C1)
-                                if C1 not in Uc_occurrences:
+                    us_list =[]
+                    ut_list =[]
+                    if self.is_subclass(C, C1) or C==C1:
+                        us_list.append(uc)
+                    else:
+                        uc1 = C1+"0"
+                        if uc1 not in Uc:
+                            if not self.is_superclass_or_subclass_of(uc1, Uc):
+                                #if len(self.get_superclass(C1)) == 0:
+                                if C1 not in Uc_occurrences.keys():
                                     Uc_occurrences[C1] = 1
                                 us_list.append(uc1)
                                 Uc.append(uc1)
-                            elif len(self.get_superclass(C1)) != 0 and C1 in Uc:
-                                us_list.append(uc1)
-                                Uc.append(uc1)
-
+                            else:
+                                subclasses = self.get_subclasses(C1)
+                                if len(subclasses)!= 0:
+                                    for subclass in subclasses:
+                                        k = Uc_occurrences.get(subclass,0)
+                                        for i in range(k):
+                                            us = subclass+str(i)
+                                            #verifico che tra tutte le sottoclassi da aggiungere
+                                            #non ce ne sia una che non appare nella closure
+                                            if subclass in closure_classes:
+                                                us_list.append(us)
+                                        if k == 0 and subclass in closure_classes:
+                                            us_list.append(subclass+"0")
+                                
+                                superclass = self.get_superclass(C1)
+                                if len(superclass)!= 0:
+                                    superclass = superclass[0]
+                                    if superclass+"0" not in Uc_ini:
+                                        k = Uc_occurrences.get(superclass,0)
+                                        for i in range(k):
+                                            us = C1+str(i)
+                                            Uc = [ut if superclass+str(i) in s else s for s in Uc]
+                                            Er = self.substitute(Er, superclass+str(i), us)
+                                            if superclass in closure_classes:
+                                                us_list.append(us)
+                                        if k == 0 and superclass in closure_classes:
+                                            Uc = [ut if superclass+"0" in s else s for s in Uc]
+                                            Er = self.substitute(Er, superclass+"0", us)
+                                            us_list.append(C1+"0")   
+                                    
                         else:
-                            subclasses = self.get_subclasses(C1)
-                             #superclasses = self.get_superclass(C1)
-                            if len(subclasses)!= 0:
-                                for subclass in subclasses:
-                                    k = Uc_occurrences.get(subclass,0)
-                                    for i in range(k):
-                                        us = subclass+str(i)
-                                        if subclass in closure_classes:
-                                            us_list.append(us)
-                                    if k == 0 and subclass in closure_classes:
-                                        us_list.append(subclass+"0")
+                            us_list.append(uc1)
+
+                    if self.is_subclass(C, C2) or C == C2:
+                        ut_list.append(uc)
                     else:
-                        us_list.append(uc1)
+                        uc2 = C2+"0"
+                        if uc2 not in Uc:
+                            if not self.is_superclass_or_subclass_of(uc2, Uc):
+                                #if len(self.get_superclass(C2)) == 0:
+                                if C2 not in Uc_occurrences.keys():
+                                    Uc_occurrences[C2] = 1
+                                ut_list.append(uc2)
+                                Uc.append(uc2)
 
-                if self.is_subclass(C, C2) or C == C2:
-                    ut_list.append(uc)
-                else:
-                    uc2 = C2+"0"
-                    if uc2 not in Uc:
-                        
-                        if not self.is_superclass_or_subclass_of(uc2, Uc):
-                            Uc.append(uc2)
+                            else:
+                                subclasses = self.get_subclasses(C2)
+                                if len(subclasses)!= 0 :
+                                    for subclass in subclasses:
+                                        k = Uc_occurrences.get(subclass,0)
+                                        for i in range(k):
+                                            ut = subclass+str(i)
+                                            if subclass in closure_classes:
+                                                ut_list.append(ut)
+                                        if k == 0 and subclass in closure_classes:
+                                            ut_list.append(subclass+"0")
 
-                            if C2 not in closure_classes:
-                                closure_classes.append(C2)
-                            if C2 not in Uc_occurrences:
-                                Uc_occurrences[C2] = 1
+                                superclass = self.get_superclass(C2)
+                                if len(superclass)!= 0:
+                                    superclass = superclass[0]
+                                    if superclass+"0" not in Uc_ini:
+                                        k = Uc_occurrences.get(superclass,0)
+                                        for i in range(k):
+                                            ut = C2+str(i)
+                                            Uc = [ut if superclass+str(i) in s else s for s in Uc]
+                                            Er = self.substitute(Er, superclass+str(i), ut)
+                                            if superclass in closure_classes:
+                                                ut_list.append(ut)
+                                        if k == 0 and superclass in closure_classes:
+                                            Uc = [ut if superclass+"0" in s else s for s in Uc]
+                                            Er = self.substitute(Er, superclass+"0", ut)
+                                            ut_list.append(C2+"0")   
+                        else:
                             ut_list.append(uc2)
 
-                            superclasses = self.get_superclass(C2)
-                            if len(superclasses) != 0:
-                                for superclass in superclasses:
-                                    subclasses = self.get_subclasses(superclass)
-                                    for subclass in subclasses:
-                                        if subclass != C2 and subclass in closure_classes:
-                                            ut_list.append(subclass+"0")
-                        else:
-                            subclasses = self.get_subclasses(C2)
-                            if len(subclasses)!= 0:
-                                for subclass in subclasses:
-                                    k = Uc_occurrences.get(subclass,0)
-                                    for i in range(k):
-                                        ut = subclass+str(i)
-                                        if subclass in closure_classes:
-                                            ut_list.append(ut)
-                                    if k == 0 and subclass in closure_classes:
-                                        ut_list.append(subclass+"0")
-                    else:
-                        ut_list.append(uc2)
+                    if len(us_list) == 0 or len(ut_list) == 0:
+                        continue
 
-                if len(us_list) == 0 or len(ut_list) == 0:
-                    continue
+                    us_list, ut_list = self.homogenize_lists(us_list, ut_list)
 
-                us_list, ut_list = self.homogenize_lists(us_list, ut_list)
+                    for r in relations:
+                        for i in range(len(us_list)):
+                            us = us_list[i]
+                            for j in range(len(us_list)):
+                                ut = ut_list[j]
 
-                for r in relations:
-                    for i in range(len(us_list)):
-                        us = us_list[i]
-                        for j in range(len(us_list)):
-                            ut = ut_list[j]
+                                H = Uc_occurrences.get(us[0:len(us)-1],0)
+                                K = Uc_occurrences.get(ut[0:len(ut)-1],0)
+                                h = int(us[len(us)-1:])
+                                k = int(ut[len(ut)-1:])
 
-                            H = Uc_occurrences.get(us[0:len(us)-1],0)
-                            K = Uc_occurrences.get(ut[0:len(ut)-1],0)
-                            h = int(us[len(us)-1:])
-                            k = int(ut[len(ut)-1:])
+                                Pr_source = self.get_distance(C1,us[0:len(us)-1])
+                                Pr_dest = self.get_distance(C2,ut[0:len(ut)-1])
+                                Pr = (Pr_source + Pr_dest)*epsilon
 
-                            Pr_source = self.get_distance(C1,us[0:len(us)-1])
-                            Pr_dest = self.get_distance(C2,ut[0:len(ut)-1])
-                            Pr = (Pr_source + Pr_dest)*epsilon
+                                if h != k:
+                                    Pr += 10
+                                if us != ut and (us, r, ut, Pr) not in Er and (ut, r, us, Pr) not in Er:
+                                    if ((us[0:len(us)-1] == ut[0:len(ut)-1]) or ( h == k) 
+                                        or (H <= K and h == H-1 and k > h) or (K-1 == k and h > k)):
 
-                            if us != ut and (us, r, ut, Pr) not in Er and (ut, r, us, Pr) not in Er:
-                                if ((us[0:len(us)-1] == ut[0:len(ut)-1]) or ( h == k) 
-                                    or (H <= K and h == H-1 and k > h) or (K-1 == k and h > k)):
-
-                                    if self.check_relation_exists(us,r,ut):
-                                        Er.append((us,r,ut, Pr))
+                                        if self.check_relation_exists(us,r,ut):
+                                            Er.append((us,r,ut, Pr))
         return (Uc, Er)
 
+    def substitute(self,list, old, new):
+        new_Er = []
+        for us, r, ut, Pr in list:
+            if us == old:
+                new_Er.append((new, r, ut, Pr))
+            elif ut == old:
+                new_Er.append((us,r,new,Pr))
+            else:
+                new_Er.append((us,r,ut,Pr))
+        return new_Er
 
     def is_superclass_or_subclass_of(self, uc, Uc):
         for uq in Uc:
-            if self.is_subclass(uq[0:len(uq)-1], uc):
+            if self.is_subclass(uq[0:len(uq)-1], uc[0:len(uc)-1]):
                 return True
 
         for uq in Uc:
-            if self.is_subclass(uc[0:len(uc)-1], uq):
+            if self.is_subclass(uc[0:len(uc)-1], uq[0:len(uq)-1]):
                 return True
         
         return False
-
-'''
-    def graph_creation_algorithm(self,semantic_model):
-        #closure = self.compute_closure_node("http://dbpedia.org/ontology/Director")
-        #return closure
-        Uc_occurrences = {}
-        graph = nx.MultiDiGraph()
-        graph_ini = nx.MultiDiGraph()
-
-        #init UC and Ut
-        for node in semantic_model.nodes:
-            if node[0:4].startswith("http"):
-                graph.add_node(node)
-                graph_ini.add_node(node)
-                Uc_occurrences[node[0:len(node)-1]] = Uc_occurrences.get(node[0:len(node)-1],0)+1
-
-        #Init Et and Er
-        for edge in semantic_model.edges:
-            label = semantic_model.get_edge_data(edge[0], edge[1])[0]
-            if edge[0][0:4].startswith("http") and edge[1][0:4].startswith("http"):
-                graph.add_edge(edge[0],edge[1])
-                graph_ini.add_edge(edge[0],edge[1])
-
-        for uc in graph_ini.nodes:
-            us = ""
-            h = int(uc[len(uc)-1:])
-            C = uc[0: len(uc)-1]
-
-            closure_C = self.compute_closure_node(C)
-            for edge in closure_C.out_edges:
-                C1 = edge[0]
-                C2 = edge[1]
-                relations=[]
-
-                rel = closure_C.get_edge_data(C1,C2)
-                for i in range(len(rel)):
-                    relations.append(rel[i]["label"])
-
-                us_list =[]
-                ut_list =[]
-                if self.is_subclass(C, C1) or C==C1:
-                    us_list.append(uc)
-                else:
-                    uc1 = C1+"0"
-                    if uc1 not in graph:
-                        if not self.is_superclass_or_subclass_of(uc1, graph.nodes):
-                            graph.add_node(uc1)
-                            us_list.append(uc1)
-                            if C1 not in Uc_occurrences:
-                                Uc_occurrences[C1] = 1
-                        else:
-                            subclasses = self.get_subclasses(C1)
-                            superclasses = self.get_superclass(C1)
-                            if len(subclasses)!= 0:
-                                for subclass in subclasses:
-                                    k = Uc_occurrences.get(subclass,0)
-                                    for i in range(k):
-                                        us = subclass+str(i)
-                                        if graph.has_node(us):
-                                            us_list.append(us)
-                    else:
-                        us_list.append(uc1)
-
-                if self.is_subclass(C, C2) or C == C2:
-                    ut_list.append(uc)
-                else:
-                    uc2 = C2+"0"
-                    if uc2 not in graph:
-                        if not self.is_superclass_or_subclass_of(uc2, graph.nodes):
-                            graph.add_node(uc2)
-                            ut_list.append(uc2)
-                            if C2 not in Uc_occurrences:
-                                Uc_occurrences[C2] = 1
-                        else:
-                            subclasses = self.get_subclasses(C2)
-                            if len(subclasses)!= 0:
-                                for subclass in subclasses:
-                                    k = Uc_occurrences.get(subclass,0)
-                                    for i in range(k):
-                                        ut = subclass+str(i)
-                                        if graph.has_node(ut):
-                                            ut_list.append(ut)
-                    else:
-                        ut_list.append(uc2)
-
-                n_min = min(len(us_list), len(ut_list))
-                n_max = max(len(us_list), len(ut_list))
-                
-                for r in relations:
-                    for i in range(n_min):
-                        ut = ut_list[i]
-                        us = us_list[i]
-                        if us != ut and not self.exists_edge(graph, us, ut, r) and not self.exists_edge(graph, ut, us, r):
-                            graph.add_edge(us,ut,label = r)
-                    
-                    if len(us_list) < len(ut_list):
-                        for i in range(n_min+1, n_max):
-                            us = us_list[n_min]
-                            ut = ut_list[i]
-                            if( us != ut  and 
-                                not self.exists_edge(graph, us, ut, r) 
-                                and not self.exists_edge(graph, ut, us, r)):
-                                graph.add_edge(us,ut,label = r)
-                    elif len(us_list) > len(ut_list):
-                        for i in range(n_min+1, n_max):
-                            ut = ut_list[n_min]
-                            us = us_list[i]
-                            if( us != ut and 
-                                not self.exists_edge(graph, us, ut, r) 
-                                and not self.exists_edge(graph, ut, us, r)):
-                                graph.add_edge(us,ut,label = r)
-
-        return graph
-'''
