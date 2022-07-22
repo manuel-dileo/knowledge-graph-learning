@@ -49,7 +49,7 @@ def create_data(entity_types_count, subject_dict, object_dict, properties_and_ty
     data = HeteroData()
     types = list(entity_types_count.keys())
     for t in types:
-        data[t].x = torch.Tensor([[1] for i in range(entity_types_count[t])])
+        data[t].x = torch.Tensor([[1] for i in range(entity_types_count[t])], dtype=torch.long)
 
     data_property = {}
     for subj in list(properties_and_types.keys()):
@@ -62,15 +62,17 @@ def create_data(entity_types_count, subject_dict, object_dict, properties_and_ty
                     #data_property['String'] = [[2,3,'en'], ]
                     #data_property['Date'] = [[19],[210,2 ]
 
-    for key in list(data_property.keys()):
-        data[key].x = torch.Tensor(data_property[key])
-
+    for key in data_property.keys():
+        lists = data_property[key]
+        if lists != '':
+            data[key].x = torch.tensor(lists, dtype=torch.long)
+            
     #property_types_count[(property, prop_name,prop_type)] 
     #properties_and_types[str(s)].append((str(p), p_type, p_value))
 
     for triple in subject_dict.keys():
         lol = [subject_dict[triple], object_dict[triple]]
-        data[triple[0], triple[1], triple[2]].edge_index = torch.Tensor(lol).long()
+        data[triple[0], triple[1], triple[2]].edge_index = torch.Tensor(lol, dtype=torch.long)
     '''
     property_types = list(property_types_count.keys())
     for t in property_types:
@@ -164,11 +166,13 @@ def function_build_feature(p_type, value):
 
     #aggiungere funzione x riconscere le date
     if p_type == 'Integer':
-        try:
-            i = int(value)
-        except:
-            i = 0
+        try: i = int(value) 
+        except: i = 0
         return [i]
+    if p_type == 'Double':
+        try: d = float(value)
+        except: d = float(0.0)
+        return [d]
     if p_type == 'gYear':
         return [int(1970-value)]
     if p_type == 'String':
@@ -181,7 +185,7 @@ def function_build_feature(p_type, value):
         return [len(value), value.count(" ") , value.count("(") + value.count(")"), lang, a_punct]
     if p_type == 'Date':
         return [(parse(value) - datetime.datetime(1970,1,1)).days]
-
+    return ""
 
 def get_type(self, relation):
     r_split = relation.split("/")

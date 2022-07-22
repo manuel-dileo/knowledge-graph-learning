@@ -7,11 +7,13 @@ import src.data.graph_modelling.approximation as approximation
 import os
 import configparser
 import networkx as nx
+import pickle
 
 def get_data(properties = False):
     dataset = make_dataset.MakeDataset()
+
     entities_and_type, triples, properties_and_types = dataset.set_entities_and_type(True)
-    properties_and_types = dataset.get_classes_types(properties_and_types)
+    
     entity_types_count, entities, property_types_count = dataset.get_count(entities_and_type, properties_and_types)
     subject_dict, object_dict = dataset.get_subject_object(
                                                 entities, 
@@ -40,14 +42,22 @@ def main():
     config_path = str(os.path.dirname(os.path.abspath(__file__)))
     config.read(os.path.join(config_path, 'config.ini'))
 
+    path_h = "/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/interim/hetero_data/data.pickle"
+
     #semantic_model.draw_result(closure_graph, path_image + "01")
-    #hetero_data = get_data(properties = False)
+    #hetero_data2 = get_data(properties = True)
+    #with open(path_h, 'wb') as f:
+    #    pickle.dump(hetero_data2, f)
+
+    hetero_data = get_data(properties = True)  
+    #load data
+    #with open(path_h, 'rb') as f:
+    #    hetero_data = pickle.load(f)
 
     #da scommentare solo per rieseguire il training
-    #model_training(hetero_data)
-    #relation_weights = predict_model.get_relations_weights(hetero_data)
-
-
+    model_training(hetero_data)
+    relation_weights = predict_model.get_relations_weights(hetero_data)
+    print(relation_weights)
     semantic_model = semantic_model_class.SemanticModelClass()
     sm = semantic_model.parse()
     #dist = semantic_model.get_distance("http://dbpedia.org/ontology/Person", "http://dbpedia.org/ontology/BodyDouble")
@@ -63,7 +73,7 @@ def main():
         lw = rel_type + " - " + str(e[3])
         closure_graph.add_edge(e[0],e[2], label = e[1], weight = e[3], lw = lw)
 
-    semantic_model.draw_result(closure_graph, path_image + "09_test")
+    semantic_model.draw_result(closure_graph, path_image + "02_test")
 
     print("-------------ontology_weights_only-----------")
 
@@ -77,9 +87,12 @@ def main():
                 list_closure.append((u, relations[i]["label"], v, relations[i]["weight"], relations[i]["lw"]))
     
     
+    for edge in closure_graph.edges(data=True): edge[2]['label'] = edge[2]['lw']
+    semantic_model.draw_result(closure_graph, path_image + "02_ontology_weights_only")
+
     ontology_weights_only_tree = approximation.steiner_tree(closure_graph.to_undirected(), semantic_model.get_leafs(), weight='weight')
     for edge in ontology_weights_only_tree.edges(data=True): edge[2]['label'] = edge[2]['lw']
-    semantic_model.draw_result(ontology_weights_only_tree, path_image + "08_ontology_weights_only_tree")
+    semantic_model.draw_result(ontology_weights_only_tree, path_image + "02_ontology_weights_only_tree")
 
     #for el in list_closure:
     #    print(el)

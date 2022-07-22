@@ -216,6 +216,7 @@ class SemanticModelClass():
                 if obj == ut or obj in superclasses2:
                     return True
         return False
+
     def is_subclass(self, candidate, superclass):
         #superclass = superclass[0: len(superclass)-1]
         query = " SELECT ?subclass  WHERE { ?subclass rdfs:subClassOf <" +superclass +">. }"
@@ -223,6 +224,14 @@ class SemanticModelClass():
         for r in result:
             if str(r[0]) == candidate:
                 return True
+        return False
+
+    def is_superclass(self, candidate_superclass, subclass):
+        #superclass = superclass[0: len(superclass)-1]
+        query = " SELECT *  WHERE { <"+subclass+"> rdfs:subClassOf <" +candidate_superclass +">. }"
+        result = self.ontology.query(query)
+        if len(result) != 0:
+            return True
         return False
 
     def get_edges(self):
@@ -454,6 +463,11 @@ class SemanticModelClass():
         Et = []
         Er = []
         Uc_ini = []
+
+        epsilon = 10 #discriminate on inherited relations
+        delta = 5 #discriminate on different instances (e.g. Person0 - City1)
+        gamma = 100 #discriminate between same labels
+
         #init UC and Ut
         for node in semantic_model.nodes:
             if node[0:4].startswith("http"):
@@ -506,7 +520,7 @@ class SemanticModelClass():
 
             for edge in closure_C.out_edges:
                 #print(edge[0],edge[1], closure_C.get_edge_data(edge[0],edge[1]))
-                epsilon = 10
+            
                 C1 = edge[0]
                 C2 = edge[1]
                 relations=[]
@@ -518,7 +532,14 @@ class SemanticModelClass():
                     us_list =[]
                     ut_list =[]
                     if self.is_subclass(C, C1) or C==C1:
-                        us_list.append(uc)
+                        if C1 != C2:
+                            us_list.append(uc)
+                        else:
+                            for u in Uc:
+                                u_class = u[0:len(u)-1] 
+                                if (u_class == C1 or self.is_subclass(u_class, C1)
+                                    or self.is_superclass(u_class, C1)):
+                                    us_list.append(u)
                     else:
                         uc1 = C1+"0"
                         if uc1 not in Uc:
@@ -561,8 +582,15 @@ class SemanticModelClass():
                         else:
                             us_list.append(uc1)
 
-                    if self.is_subclass(C, C2) or C == C2:
-                        ut_list.append(uc)
+                    if self.is_subclass(C, C2) or C == C2: 
+                        if C1 != C2:
+                            ut_list.append(uc)
+                        else:
+                            for u in Uc:
+                                u_class = u[0:len(u)-1] 
+                                if (u_class == C2 or self.is_subclass(u_class, C2)
+                                    or self.is_superclass(u_class, C2)):
+                                    ut_list.append(u)
                     else:
                         uc2 = C2+"0"
                         if uc2 not in Uc:
@@ -618,13 +646,18 @@ class SemanticModelClass():
                                 K = Uc_occurrences.get(ut[0:len(ut)-1],0)
                                 h = int(us[len(us)-1:])
                                 k = int(ut[len(ut)-1:])
-
+                                #se la classe ha proprietà atomiche, annullo la distanza Pr source
+                                # e Prdest. (dist 0, pr=1)
                                 Pr_source = self.get_distance(C1,us[0:len(us)-1])
                                 Pr_dest = self.get_distance(C2,ut[0:len(ut)-1])
-                                Pr = (Pr_source + Pr_dest)*epsilon
+                                Pr = 1+(Pr_source + Pr_dest)*epsilon
 
                                 if h != k:
-                                    Pr += 10
+                                    Pr += delta
+                                
+                                if self.relation_label_exists(Er,us,r,ut):
+                                    Pr += gamma
+
                                 if us != ut and (us, r, ut, Pr) not in Er and (ut, r, us, Pr) not in Er:
                                     if ((us[0:len(us)-1] == ut[0:len(ut)-1]) or ( h == k) 
                                         or (H <= K and h == H-1 and k > h) or (K-1 == k and h > k)):
@@ -653,4 +686,14 @@ class SemanticModelClass():
             if self.is_subclass(uc[0:len(uc)-1], uq[0:len(uq)-1]):
                 return True
         
+        return False
+
+    def relation_label_exists(self, Er, e_us,e_r,e_ut):   
+        for (us, rel, ut, pr) in Er:
+            if (e_r == rel and ((us == e_us and ut == e_ut) 
+                or (us == e_ut and ut == e_us))):
+                return False
+            elif (e_r == rel and ((us != e_us and ut == e_ut) 
+                or (us == e_us and ut != e_ut))):
+                return True
         return False

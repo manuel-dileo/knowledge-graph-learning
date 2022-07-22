@@ -26,16 +26,17 @@ class MakeDataset():
 
     def get_property_type(self, property):
         split_p = property.split("^^")
-        p_type = split_p[1].split("#")
-        if p_type[1].startswith("xsd:integer"):
+        p_type = str(split_p[1].split("#")[1]).lower()
+        
+        if p_type.startswith("xsd:integer"):
             return("Integer", split_p[0])
-        if p_type[1].startswith("xsd:string"):
+        if p_type.startswith("xsd:string"):
             return("String", split_p[0])
-        if p_type[1].startswith("xsd:double"):
+        if p_type.startswith("xsd:double"):
             return("Double", split_p[0])
-        if p_type[1].startswith("xsd:gYear"):
+        if p_type.startswith("xsd:gYear"):
             return("Year",split_p[0])
-        if p_type[1].startswith("xsd:date"):
+        if p_type.startswith("xsd:date"):
             return("Date",split_p[0])
         return ("","")
 
@@ -79,8 +80,7 @@ class MakeDataset():
         return results
     
     def get_classes_types(self, properties_and_types):
-        prop_classes = self.get_class_from_property()
-        classes = {}
+        class_from_property = self.get_class_from_property()
         new_properties_and_types = {}
         for s in list(properties_and_types.keys()):
             for element in properties_and_types[s]:
@@ -88,16 +88,10 @@ class MakeDataset():
                 p_type = element[1]
                 p_value = element[2] 
                 
-                if prop in classes:
+                if prop in class_from_property:
                     if s not in new_properties_and_types:
                         new_properties_and_types[s] = []
-                    new_properties_and_types[s].append((classes[prop], prop, p_type, p_value))
-                else:
-                    prop_class = prop_classes[prop]
-                    if s not in new_properties_and_types:
-                        new_properties_and_types[s] = []
-                    new_properties_and_types[s].append((prop_class, prop, p_type, p_value))
-                    classes[prop] = prop_class
+                    new_properties_and_types[s].append((class_from_property[prop], prop, p_type, p_value))
         
         return new_properties_and_types
 
@@ -147,6 +141,7 @@ class MakeDataset():
             s1 = str(s)
             p1 = str(p)
             o1 = str(o)
+            insert_type = True
 
             if p != str(RDF.type):
                 if str(s) in list(properties_and_type.keys()):
@@ -166,6 +161,7 @@ class MakeDataset():
                                 new_triples.append((o,str(RDF.type),self.config["prefixes"]["ontology"]+ new_obj_type[0] ))
                                 added_types.append(o)
                             new_triples.append((new_subj_type, p, new_obj_type))
+                        insert_type = False
                     else: 
                         if s not in added_types:
                             new_triples.append((s, str(RDF.type),self.config["prefixes"]["ontology"]+entities_and_type[str(s)][0] ))
@@ -174,9 +170,14 @@ class MakeDataset():
                             new_triples.append((o, str(RDF.type),self.config["prefixes"]["ontology"]+entities_and_type[str(o)][0] ))
                             added_types.append(o)
                         new_triples.append((s, p, o))
+                    insert_type = False
+            else:
+                if insert_type:
+                    new_triples.append((s, p, o))
+                    insert_type = True
         return new_triples
 
-
+   
     def get_subject_object(self, entities, 
                                 triples, 
                                 entities_and_type, 
@@ -192,6 +193,8 @@ class MakeDataset():
 
         for class_name, subject,rel, p_type in property_types_count.keys():
             index_dict[p_type] = {'count':0}
+            if class_name not in index_dict.keys():
+                index_dict[class_name] = {'count':0}  
         new_triples.sort()
         for triple in new_triples:
             s = str(triple[0])
@@ -205,6 +208,7 @@ class MakeDataset():
                     p_type = self.get_type(p)
                     o_type = entities_and_type[o][0]
                     type_triples.append((s_type,p_type, o_type))
+
                 else: 
                     for properties in properties_and_type[s]:
                         s_type = properties[0]
@@ -242,40 +246,43 @@ class MakeDataset():
         properties_and_types ={}
         relations = []
         triples = []
-
         # Process the Knowledge Graph
         g = rdflib.Graph()
         g.parse(self.config["kg"]["path"], format=self.config["kg"]["format"])
         for s, p, o in g:
+            str_s = str(s)
+            str_p = str(p)
+            str_o = str(o)
+            if str_p != str(RDF.type):
+                if not str_s in entities_and_type.keys():
+                    entities_and_type[(str_s)] =[]
+                if not str_p in relations:
+                    relations.append(str_p)
 
-            if str(p) != str(RDF.type):
-                if not str(s) in entities_and_type.keys():
-                    entities_and_type[(str(s))] =[]
-                if not str(p) in relations:
-                    relations.append(str(p))
-
-                if str(o).find('^^') == -1:
-                    if not str(o) in entities_and_type.keys():
-                        entities_and_type[str(o)]=[]
-                    triples.append((s,p,o))
+                if str_o.find('^^') == -1:
+                    if not str_o in entities_and_type.keys():
+                        entities_and_type[str_o]=[]
+                    triples.append((str_s,str_p,str_o))
                 else:
                     if use_properties:
-                        if str(s) not in properties_and_types.keys():
-                            properties_and_types[str(s)] =[]
-                        p_type, p_value = self.get_property_type(str(o))
-                        if (str(s),p_type, p_value) not in properties_and_types[str(s)]:
-                            properties_and_types[str(s)].append((self.get_type(str(p)), p_type, p_value))
-                        triples.append((str(s),str(p),str(o)))
+                        if str_s not in properties_and_types.keys():
+                            properties_and_types[str_s] =[]
+                        p_type, p_value = self.get_property_type(str_o)
+                        if (str_s,p_type, p_value) not in properties_and_types[str_s]:
+                            properties_and_types[str_s].append((self.get_type(str_p), p_type, p_value))
+                        triples.append((str_s,str_p,str_o))
             else:
-                if str(s) not in entities_and_type.keys():
-                    entities_and_type[str(s)] =[]
-                triples.append((str(s),str(p),str(o)))
-                split_o = str(o).split('/')
-                entities_and_type[str(s)].append(split_o[len(split_o)-1])
+                if str_s not in entities_and_type.keys():
+                    entities_and_type[str_s] =[]
+                triples.append((str_s,str_p,str_o))
+                split_o = str_o.split('/')
+                entities_and_type[str_s].append(split_o[len(split_o)-1])
 
 #               properties_and_type[str(s)] = self.get_property_type(str(o))
 
         for e in entities_and_type:
             entities_and_type[e].sort()
+
+        properties_and_types = self.get_classes_types(properties_and_types)
 
         return entities_and_type, triples, properties_and_types
