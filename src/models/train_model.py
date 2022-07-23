@@ -65,7 +65,7 @@ def create_data(entity_types_count, subject_dict, object_dict, properties_and_ty
     for key in data_property.keys():
         lists = data_property[key]
         if lists != '':
-            data[key].x = torch.tensor(lists, dtype=torch.long)
+            data[key].x = torch.Tensor(lists, dtype=torch.long)
             
     #property_types_count[(property, prop_name,prop_type)] 
     #properties_and_types[str(s)].append((str(p), p_type, p_value))
