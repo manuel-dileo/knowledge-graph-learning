@@ -9,7 +9,7 @@ import configparser
 import networkx as nx
 import pickle
 
-def get_data(properties = False):
+def get_data(properties = False, gnn):
     dataset = make_dataset.MakeDataset()
 
     entities_and_type, triples, properties_and_types = dataset.set_entities_and_type(True)
@@ -24,7 +24,7 @@ def get_data(properties = False):
                                                 property_types_count
                                                 )
 
-    hetero_data = train_model.create_data(entity_types_count, subject_dict, object_dict, properties_and_types, property_types_count)
+    hetero_data = gnn.create_data(entity_types_count, subject_dict, object_dict, properties_and_types, property_types_count)
     return hetero_data
 
 def model_training(hetero_data):
@@ -48,8 +48,8 @@ def main():
     #hetero_data2 = get_data(properties = True)
     #with open(path_h, 'wb') as f:
     #    pickle.dump(hetero_data2, f)
-
-    hetero_data = get_data(properties = True)  
+    gnn = train_model.GNN()
+    hetero_data = get_data(properties = True, gnn)  
     #load data
     #with open(path_h, 'rb') as f:
     #    hetero_data = pickle.load(f)

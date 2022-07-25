@@ -1,0 +1,29 @@
+<http://dbpedia.org/resource/What_Women_Want_(2011_film)> <https://dbpedia.org/ontology/language> "English^^<http://www.w3.org/2001/XMLSchema#xsd:string>." .
+<http://dbpedia.org/resource/You_Are_the_Only_One_(TV_series)> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://dbpedia.org/ontology/TelevisionShow> .
+<http://dbpedia.org/resource/Robert_Wise> <https://dbpedia.org/ontology/bornIn> <http://dbpedia.org/resource/Winchester,_Indiana> .
+<http://dbpedia.org/resource/Lisa_Giobbi> <https://dbpedia.org/ontology/birthDate> "1960-04-19^^<http://www.w3.org/2001/XMLSchema#xsd:date>." .
+<http://dbpedia.org/resource/Saarbrücken> <https://dbpedia.org/ontology/cityName> "Саарбрюккен^^<http://www.w3.org/2001/XMLSchema#xsd:string>." .
+<http://dbpedia.org/resource/Hebron,_Nebraska> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://dbpedia.org/ontology/City> .
+<http://dbpedia.org/resource/Edd_Byrnes> <https://dbpedia.org/ontology/birthDate> "1932-07-30^^<http://www.w3.org/2001/XMLSchema#xsd:date>." .
+<http://dbpedia.org/resource/Democratic_Republic_of_Afghanistan> <https://dbpedia.org/ontology/countryName> "Repubblica Democratica dell'Afghanistan^^<http://www.w3.org/2001/XMLSchema#xsd:string>." .
+<http://dbpedia.org/resource/Hebron,_Nebraska> <https://dbpedia.org/ontology/area> "3.65188e+06^^<http://www.w3.org/2001/XMLSchema#xsd:double>." .
+<http://dbpedia.org/resource/Falls_Church,_Virginia> <https://dbpedia.org/ontology/area> "5.3e+06^^<http://www.w3.org/2001/XMLSchema#xsd:double>." .
+<http://dbpedia.org/resource/Max_Schneider> <https://dbpedia.org/ontology/birthDate> "1992-06-21^^<http://www.w3.org/2001/XMLSchema#xsd:date>." .
+<http://dbpedia.org/resource/Bill_Hunter_(actor)> <https://dbpedia.org/ontology/spouse> <http://dbpedia.org/resource/Pat_Bishop> .
+<http://dbpedia.org/resource/Max_Schneider> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://dbpedia.org/ontology/Actor> .
+<http://dbpedia.org/resource/Robert_Wise> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://dbpedia.org/ontology/Person> .
+<http://dbpedia.org/resource/Democratic_Republic_of_Afghanistan> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://dbpedia.org/ontology/Country> .
+<http://dbpedia.org/resource/Robert_Wise> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://dbpedia.org/ontology/Director> .
+<http://dbpedia.org/resource/Lisa_Giobbi> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://dbpedia.org/ontology/Actor> .
+<http://dbpedia.org/resource/What_Women_Want_(2011_film)> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://dbpedia.org/ontology/Film> .
+<http://dbpedia.org/resource/Edd_Byrnes> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://dbpedia.org/ontology/Actor> .
+<http://dbpedia.org/resource/Winchester,_Indiana> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://dbpedia.org/ontology/City> .
+<http://dbpedia.org/resource/Bill_Hunter_(actor)> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://dbpedia.org/ontology/Actor> .
+<http://dbpedia.org/resource/Pat_Bishop> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://dbpedia.org/ontology/Actor> .
+<http://dbpedia.org/resource/Saarbrücken> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://dbpedia.org/ontology/City> .
+<http://dbpedia.org/resource/Falls_Church,_Virginia> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <https://dbpedia.org/ontology/City> .
+<http://dbpedia.org/resource/Max_Schneider> <https://dbpedia.org/ontology/author>   <http://dbpedia.org/resource/You_Are_the_Only_One_(TV_series)> .
+<http://dbpedia.org/resource/You_Are_the_Only_One_(TV_series)> <https://dbpedia.org/ontology/takesPlaceIn> <http://dbpedia.org/resource/Democratic_Republic_of_Afghanistan>.
+<http://dbpedia.org/resource/What_Women_Want_(2011_film)>   <https://dbpedia.org/ontology/takesPlaceIn> <http://dbpedia.org/resource/Saarbrücken> .
+<http://dbpedia.org/resource/What_Women_Want_(2011_film)>   <https://dbpedia.org/ontology/directedBy>   <http://dbpedia.org/resource/Robert_Wise> .
+<http://dbpedia.org/resource/Bill_Hunter_(actor)>	<https://dbpedia.org/ontology/starring>	<http://dbpedia.org/resource/What_Women_Want_(2011_film)>.
