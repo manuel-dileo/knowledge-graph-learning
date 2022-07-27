@@ -1,3 +1,4 @@
+import torch
 from re import I
 from sklearn.linear_model import OrthogonalMatchingPursuit
 from torch_geometric.data import HeteroData
@@ -7,7 +8,6 @@ from torch_geometric.transforms import RandomLinkSplit
 from sklearn.metrics import roc_auc_score
 import numpy as np 
 from torch_geometric.data import HeteroData
-import torch
 from torch_geometric.nn import SAGEConv, to_hetero, GATConv
 import configparser
 import os
@@ -65,22 +65,13 @@ def create_data(entity_types_count, subject_dict, object_dict, properties_and_ty
         lists = data_to_insert[key]
         if lists != '':
             data[key].x = torch.Tensor(lists)
-
+            
     #property_types_count[(property, prop_name,prop_type)] 
     #properties_and_types[str(s)].append((str(p), p_type, p_value))
 
     for triple in subject_dict.keys():
         lol = [subject_dict[triple], object_dict[triple]]
         data[triple[0], triple[1], triple[2]].edge_index = torch.Tensor(lol).long()
-    
-
-    for k,v in data.edge_index_dict.items():
-        max_ind_sx = int(max(v[0]))
-        try:
-            n1 = data[k[0]].x[max_ind_sx]
-        except IndexError:
-            print("Relation:", k, " node type:", k[0], " index:", max_ind_sx, f"{k[0]} matrix dimension:", len(data[k[0]].x))
-    
     '''
     property_types = list(property_types_count.keys())
     for t in property_types:
@@ -89,6 +80,7 @@ def create_data(entity_types_count, subject_dict, object_dict, properties_and_ty
 
         data['Person', 'age', 'Integer'].edge_index = torch.Tensor(lol).long()
     '''
+    
     return data
 
 def split_dataset(data):
