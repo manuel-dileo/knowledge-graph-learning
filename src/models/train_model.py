@@ -36,7 +36,6 @@ def get_model(data):
     model = GNN(hidden_channels=4, out_channels=2)
     model = to_hetero(model, data.metadata(), aggr='sum')
 
-
     with torch.no_grad():  # Initialize lazy modules.
         out = model(data.x_dict,data.edge_index_dict)
     
@@ -47,32 +46,41 @@ def get_model(data):
     
 def create_data(entity_types_count, subject_dict, object_dict, properties_and_types = {}, property_types_count = {}):
     data = HeteroData()
-    types = list(entity_types_count.keys())
-    for t in types:
-        data[t].x = torch.Tensor([[1] for i in range(entity_types_count[t])], dtype=torch.long)
 
-    data_property = {}
+    data_to_insert = {}
     for subj in list(properties_and_types.keys()):
         for class_type, prop_name, prop_type, prop_value in properties_and_types[subj]:
-            if prop_type not in data_property:
-                data_property[prop_type] = []
+            if prop_type not in data_to_insert:
+                data_to_insert[prop_type] = []
             else:
                 for i in range(property_types_count[(class_type, subj, prop_name, prop_type)]):
-                    data_property[prop_type].append(function_build_feature(prop_type, prop_value))
-                    #data_property['String'] = [[2,3,'en'], ]
-                    #data_property['Date'] = [[19],[210,2 ]
+                    data_to_insert[prop_type].append(function_build_feature(prop_type, prop_value))
 
-    for key in data_property.keys():
-        lists = data_property[key]
+
+    types = list(entity_types_count.keys())
+    for t in types:
+        data_to_insert[t] = [[1] for i in range(entity_types_count[t])]
+
+    for key in data_to_insert.keys():
+        lists = data_to_insert[key]
         if lists != '':
-            data[key].x = torch.tensor(lists, dtype=torch.long)
-            
+            data[key].x = torch.Tensor(lists)
+
     #property_types_count[(property, prop_name,prop_type)] 
     #properties_and_types[str(s)].append((str(p), p_type, p_value))
 
     for triple in subject_dict.keys():
         lol = [subject_dict[triple], object_dict[triple]]
-        data[triple[0], triple[1], triple[2]].edge_index = torch.Tensor(lol, dtype=torch.long)
+        data[triple[0], triple[1], triple[2]].edge_index = torch.Tensor(lol).long()
+    
+
+    for k,v in data.edge_index_dict.items():
+        max_ind_sx = int(max(v[0]))
+        try:
+            n1 = data[k[0]].x[max_ind_sx]
+        except IndexError:
+            print("Relation:", k, " node type:", k[0], " index:", max_ind_sx, f"{k[0]} matrix dimension:", len(data[k[0]].x))
+    
     '''
     property_types = list(property_types_count.keys())
     for t in property_types:
