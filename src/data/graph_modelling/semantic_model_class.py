@@ -88,7 +88,7 @@ class SemanticModelClass():
         return self.classes
     
     def get_leafs(self):
-        return self.leafs
+        return list(self.leafs.keys())
 
     def get_closure_classes(self):
         results = {}
@@ -261,14 +261,14 @@ class SemanticModelClass():
         r_split = relation.split("/")
         return r_split[len(r_split)-1]
 
-    def update_graph_weights(self, closure, weights, set = True):
-        new_graph = nx.MultiDiGraph()
+    def update_graph_weights(self, sd, weights, set = True):
+        new_graph = nx.MultiGraph()
         added_triples = []
-        for edge in closure.edges:
+        for edge in sd.edges:
 
             u = edge[0]
             v = edge[1]
-            relations = closure.get_edge_data(u,v)
+            relations = sd.get_edge_data(u,v)
 
             for i in range(0, len(relations)):
                 u_type = self.get_relation_type(str(u)[:-1])
@@ -277,16 +277,16 @@ class SemanticModelClass():
                 try:
                     rgcn_weight = weights[(u_type,rel_type,v_type)]
                 except KeyError:
-                    rgcn_weight = 100.0
+                    rgcn_weight = 0
                 
                 if (u,rel_type,v) not in added_triples:
                     if set:
-                        w = round(abs(rgcn_weight*1),2)
+                        w = round(abs(1-rgcn_weight),2)
                         lw = rel_type + " - " + str(w)
                         new_graph.add_edge(u,v, label = rel_type, weight = w, lw = lw)
                         added_triples.append((u, rel_type, v))
                     else:
-                        w = round(abs(1-rgcn_weight*relations[i]["weight"]))
+                        w = round(abs((1-rgcn_weight)*relations[i]["weight"]),2)
                         lw = rel_type + " - " + str(w)
 
                         new_graph.add_edge(u,v, label = rel_type,
@@ -466,7 +466,7 @@ class SemanticModelClass():
 
         epsilon = 10 #discriminate on inherited relations
         delta = 5 #discriminate on different instances (e.g. Person0 - City1)
-        gamma = 100 #discriminate between same labels
+        gamma = 0 #discriminate between same labels
 
         #init UC and Ut
         for node in semantic_model.nodes:
