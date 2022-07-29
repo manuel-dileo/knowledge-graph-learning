@@ -25,7 +25,9 @@ class GNN(torch.nn.Module):
 def set_model(data):
     model = GNN(hidden_channels=4, out_channels=2)
     model = to_hetero(model, data.metadata(), aggr='sum')
-    model.load_state_dict(torch.load(config_path+config['model']['path']))
+    #model.load_state_dict(torch.load(config_path+config['model']['path']))
+    path = '/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/models/model_weigths.pth'
+    model.load_state_dict(torch.load(path))
     return model
 
 def test_hetscores(model, test_link):
@@ -54,20 +56,23 @@ def test_hetscores(model, test_link):
     
     return pred_cont
 
-def get_relations_weights(data):
-    test_data = HeteroData()
-    model = set_model(data)
-
+def get_relations_weights(test_data, hetero):
+    model = set_model(hetero)
+    #nella sd non possono esserci archi mai visti nel training
+    #weight = test_hetscores(model, hetero)[0]
+    data = HeteroData()
     relations_weights={}
-    for triple in data.edge_index_dict.keys():
-        for triple2 in data.edge_index_dict.keys():
-            test_data[triple2].edge_index = torch.Tensor([[],[]]).long()
-            test_data[triple2[0]].x = torch.Tensor([[1]])
-            test_data[triple2[2]].x = torch.Tensor([[1]])
-        test_data[triple[0]].x = torch.Tensor([[1]])
-        test_data[triple[2]].x = torch.Tensor([[1]])
-        test_data[triple].edge_index = torch.Tensor([[0],[0]]).long()
-        weight = test_hetscores(model, test_data)[0]
+    for triple in test_data.edge_index_dict.keys():
+        for triple2 in test_data.edge_index_dict.keys():
+            data[triple2].edge_index = torch.Tensor([[],[]]).long()
+            data[triple2[0]].x = torch.Tensor([[1]])
+            data[triple2[2]].x = torch.Tensor([[1]])
+        data[triple[0]].x = torch.Tensor([[1]])
+        data[triple[2]].x = torch.Tensor([[1]])
+        data[triple].edge_index = torch.Tensor([[0],[0]]).long()
+        weight = test_hetscores(model, data)[0]
         relations_weights[triple] = weight
         #print(f'{triple}: {relations_weights}')
+    
     return relations_weights
+    

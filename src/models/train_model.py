@@ -14,6 +14,7 @@ import os
 from langdetect import detect
 from dateutil.parser import parse
 import datetime, string
+from torch_geometric.utils import remove_self_loops, remove_isolated_nodes
 
 config = configparser.ConfigParser()
 config_path=str(os.path.dirname(os.path.abspath(__file__))).split(os.sep)
@@ -66,24 +67,34 @@ def create_data(entity_types_count, subject_dict, object_dict, properties_and_ty
         if lists != '':
             data[key].x = torch.Tensor(lists)
             
-    #property_types_count[(property, prop_name,prop_type)] 
-    #properties_and_types[str(s)].append((str(p), p_type, p_value))
-
-    for triple in subject_dict.keys():
+    for triple in subject_dict.keys():  #le keys di subject_dict ed object_dict sono ==
+        #ci sono 2 dizionari diversi per evitare il doppio for (complessità n^2)
         lol = [subject_dict[triple], object_dict[triple]]
         data[triple[0], triple[1], triple[2]].edge_index = torch.Tensor(lol).long()
-    '''
-    property_types = list(property_types_count.keys())
-    for t in property_types:
-        data['Integer'].x = torch.Tensor([[function_build_feature(tipo, valore)] for i in range(entity_types_count[t])])
 
-
-        data['Person', 'age', 'Integer'].edge_index = torch.Tensor(lol).long()
-    '''
+    
+    for k,v in data.edge_index_dict.items():
+        max_ind_sx = int(max(v[1]))
+        try:
+            n1 = data[k[2]].x[max_ind_sx]
+        except IndexError:
+            print("Relation:", k, " node type:", k[2], " index:", max_ind_sx, f"{k[2]} matrix dimension:", len(complete_data[k[2]].x))
+        
     
     return data
 
+def remove_isolated_nodes(data):
+
+    for edge_type in data.edge_index_dict.keys():
+        if edge_type[0] == edge_type[2]:
+            new_edge_index = remove_self_loops(data[edge_type].edge_index)[0]
+            data[edge_type].edge_index = new_edge_index
+        new_edge_index = remove_isolated_nodes(data[edge_type].edge_index)[0]
+        data[edge_type].edge_index = new_edge_index
+    return data
+
 def split_dataset(data):
+
     edge_types = list(data.edge_index_dict.keys())
 
     link_split = RandomLinkSplit(num_val=0.0,
@@ -152,13 +163,15 @@ def test_hetlinkpre(model, edge_types, test_link):
     pred_cont = torch.sigmoid(hs).cpu().detach().numpy()
     
     # EVALUATION
-    test_roc_score = roc_auc_score(edge_labels)#, pred_function_build_feature
+    test_roc_score = roc_auc_score(edge_labels, pred_cont)#, pred_function_build_feature
+    return test_roc_score
 
 def train_and_save(model, out, optimizer, criterion, data):
     for epoch in range(1,1001):
         loss = train_hetlinkpre(model, out, optimizer, criterion, data)
-    torch.save(model.state_dict(), config['model']['path'])
-
+    path="/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/models/"
+    #torch.save(model.state_dict(), config['model']['path'])
+    torch.save(model.state_dict(), config_path + config['model']['path'])
 
 def function_build_feature(p_type, value):
     #return [5] così funziona perchè è numerico

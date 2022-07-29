@@ -12,6 +12,7 @@ from collections import defaultdict
 import rdflib
 import json
 from networkx.readwrite import json_graph
+import src.data.utils as utils
 
 
 class SemanticModelClass():
@@ -27,7 +28,16 @@ class SemanticModelClass():
 #        self.ontology.parse(self.config['ontology']['path'])
 #        self.ontology.parse("/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/external/ontologia_ereditarieta_livelli.ttl")
         self.ontology.parse("/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/external/ontologia.ttl")
+        self.properties_types = self.get_properties_types()
 
+    def get_properties_types(self):
+        query = "SELECT DISTINCT ?property ?type WHERE "+\
+        "{ ?property rdf:type owl:DatatypeProperty; rdfs:range ?type .}"
+        result_dict ={}
+        result = self.ontology.query(query)
+        for r in result:
+            result_dict[utils.get_type(str(r[0]))] = utils.get_ontology_type(str(r[1]))
+        return result_dict
     def draw_result(self,graph, filename):
         
         node_label = nx.get_node_attributes(graph,'id')
@@ -73,8 +83,15 @@ class SemanticModelClass():
                     #if the element is an identifier
                     if row[3].strip().lower() == 'yes':
                         self.classes[node_name]= self.classes.get(node_name, -1)+1
-                        self.triples.append((node_name +str(self.classes[node_name]), row[2], row[0]))
-                        semantic_model.add_edge(node_name +str(self.classes[node_name]),row[2], label = row[0])
+                        self.triples.append((node_name +str(self.classes[node_name]), row[0], row[2]))
+                        semantic_model.add_edge(node_name +str(self.classes[node_name]),row[0], label = row[2])
+                    else:
+                        if node_name in self.classes.keys():
+                            semantic_model.add_edge(node_name +str(self.classes[node_name]),
+                                                    row[0], 
+                                                    label = row[2])
+
+                            self.triples.append((node_name +str(self.classes[node_name]), row[0], row[2]))
 
                         #print(node_name +str(self.classes[node_name]))
                     
@@ -257,9 +274,6 @@ class SemanticModelClass():
          self.get_closure_classes()
          return self.get_edges()
 
-    def get_relation_type(self,relation):
-        r_split = relation.split("/")
-        return r_split[len(r_split)-1]
 
     def update_graph_weights(self, sd, weights, set = True):
         new_graph = nx.MultiGraph()
@@ -271,9 +285,9 @@ class SemanticModelClass():
             relations = sd.get_edge_data(u,v)
 
             for i in range(0, len(relations)):
-                u_type = self.get_relation_type(str(u)[:-1])
-                v_type = self.get_relation_type(v)[:-1]
-                rel_type = self.get_relation_type(relations[i]['label'])
+                u_type = utils.get_type(str(u)[:-1])
+                v_type = utils.get_type(v)[:-1]
+                rel_type = utils.get_type(relations[i]['label'])
                 try:
                     rgcn_weight = weights[(u_type,rel_type,v_type)]
                 except KeyError:
@@ -664,7 +678,7 @@ class SemanticModelClass():
 
                                         if self.check_relation_exists(us,r,ut):
                                             Er.append((us,r,ut, Pr))
-        return (Uc, Er)
+        return (Er, Et)
 
     def substitute(self,list, old, new):
         new_Er = []

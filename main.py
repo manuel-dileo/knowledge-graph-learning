@@ -1,5 +1,6 @@
 from src.data.graph_modelling.functions import draw_result
 import src.data.make_dataset as make_dataset
+import src.data.utils as utils
 import src.models.train_model as train_model 
 import src.models.predict_model as predict_model
 import src.data.graph_modelling.semantic_model_class as semantic_model_class
@@ -8,11 +9,12 @@ import os
 import configparser
 import networkx as nx
 import pickle
+import rdflib
 
-def data_preprocessing(properties = False):
+def data_preprocessing(knowledge, properties = False):
     dataset = make_dataset.MakeDataset()
 
-    triples = dataset.set_entities_and_type(properties)
+    triples = dataset.set_entities_and_type(knowledge, properties)
     new_triples = dataset.clean_triples(triples)
 
     entity_types_count, property_types_count = dataset.get_count()
@@ -36,50 +38,64 @@ def test_data(test_set):
     print("prova")
 
 def main():
+    #costanti utili
     n_experiment = "01"
-    path_image = "/home/sara/Desktop/fase2/git_repo/"+\
-    "knowledge-graph-learning/data/interim/semantic_models/"+\
+    path_image = "/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/interim/semantic_models/"+\
     n_experiment+"/confronti/"
 
+    #import file di configurazione
     config = configparser.ConfigParser()
     config_path = str(os.path.dirname(os.path.abspath(__file__)))
     config.read(os.path.join(config_path, 'config.ini'))
 
-    path_h = "/home/sara/Desktop/fase2/git_repo/knowledge-graph-learning/data/interim/hetero_data/data.pickle"
-
-    #da scommentare solo per rieseguire il training
-    hetero_data = data_preprocessing(False)  
-    model_training(hetero_data)
-
+    #generazione semantic description
     semantic_model = semantic_model_class.SemanticModelClass()
     sm = semantic_model.parse()
-    Uc, Er = semantic_model.algorithm(sm)
+    Er, Et = semantic_model.algorithm(sm)
 
-    #get closure 
+    #KG
+    knowledge_graph = rdflib.Graph()
+    knowledge_graph.parse(config["kg"]["path"], format=config["kg"]["format"])
+
+    #TRAINING UTILITIES: da scommentare solo per rieseguire il training
+    hetero_data = data_preprocessing(knowledge_graph, False)  
+    #print(hetero_data.edge_types)
+    #saved_hetero = save(heterodata.metadata())
+    #model_training(hetero_data)
+
+    #creazione grafo Semantic description + versione x stampa pulita
     sd = nx.MultiGraph()
-    sdbis = nx.MultiDiGraph()
+    ##sd_print = nx.MultiDiGraph()
     for e in Er:
-        ebis0 = semantic_model.get_relation_type(e[0])
-        ebis2 = semantic_model.get_relation_type(e[2])
+        #eprint0 = semantic_model.get_relation_type(e[0])
+        #eprint2 = semantic_model.get_relation_type(e[2])
         sd.add_node(e[0])
         sd.add_node(e[2])
-        sdbis.add_node(ebis0)
-        sdbis.add_node(ebis2)
+        #sd_print.add_node(eprint0)
+        #sd_print.add_node(eprint2)
 
-        rel_type = semantic_model.get_relation_type(e[1])
+        rel_type = utils.get_type(e[1])
         lw = rel_type + " - " + str(e[3])
         sd.add_edge(e[0],e[2], label = e[1], weight = e[3], lw = lw)
-        sdbis.add_edge(ebis0,ebis2, label = rel_type)
+        
+        #sd_print.add_edge(eprint0,eprint2, label = rel_type)
 
-    #test_data = #funzione che crea data['tipo'].x e .edge_index per ogni elemento
+
+    #Stampa semantic description
+    semantic_model.draw_result(sd, path_image + n_experiment+"_base")
+    #semantic_model.draw_result(sd_print, path_image + n_experiment+"_print")
+
+    test_data = utils.triples_to_heterodata(Er, Et)
+    #print(test_data)
+    #test_data =  
+     
+    #funzione che crea data['tipo'].x e .edge_index per ogni elemento
     #di closure graph + per ogni proprietà
     #relation_weights = predict_model.get_relations_weights(test_data)
     #print(relation_weights)
-    semantic_model.draw_result(sdbis, path_image + n_experiment+"_basesdbis")
 
-    semantic_model.draw_result(sd, path_image + n_experiment+"_base")
 
-    relation_weights = predict_model.get_relations_weights(hetero_data)
+    relation_weights = predict_model.get_relations_weights(test_data, hetero_data)
     print(relation_weights)
 
     list_closure =[]
